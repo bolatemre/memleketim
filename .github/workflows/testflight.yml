@@ -4,97 +4,18 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'index.html'
-      - 'capacitor.config.json'
-      - 'scripts/**'
-      - '.github/workflows/testflight.yml'
 
 jobs:
   ios:
     runs-on: macos-15
     timeout-minutes: 45
-    env:
-      TEAM_ID: Z5ZU32M6W4
-      ASC_KEY_ID: 5YXHN38GN5
-      ASC_ISSUER_ID: ab9b64ae-e251-4e02-b25f-e51f11fccc2d
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Oyun dosyası
-        run: |
-          mkdir -p www
-          test -f index.html || { echo "index.html bulunamadı: oyun dosyasını reponun ana dizinine yükle"; exit 1; }
-          cp index.html www/index.html
-
-      - name: Paketler
-        run: |
-          npm install
-          python3 -m pip install --quiet --break-system-packages pillow || python3 -m pip install --quiet pillow
-
-      - name: İkon ve açılış görselleri
-        run: python3 scripts/make-assets.py
-
-      - name: iOS projesini oluştur
-        run: |
-          npx cap add ios --packagemanager SPM
-          npx cap copy ios
-          npx @capacitor/assets generate --ios --iconBackgroundColor "#5cc0dd" --splashBackgroundColor "#5cc0dd"
-
-      - name: Info.plist ayarları
-        run: |
-          P=ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations" "$P" || true
-          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" "$P"
-          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait" "$P"
-          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$P" || /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$P"
-
-      - name: App Store Connect anahtarı
+      - name: Derle ve TestFlight'a gönder
         env:
           KEY_PASS: ${{ secrets.KEY_PASS }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/keys"
-          node scripts/decrypt-key.js > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
-
-      - name: Arşivle (imzalama otomatik)
-        run: |
-          cd ios/App
-          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" archive \
-            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
-            MARKETING_VERSION=1.0 CURRENT_PROJECT_VERSION=${{ github.run_number }} \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-
-      - name: TestFlight'a yükle
-        run: |
-          cat > "$RUNNER_TEMP/export.plist" <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-            <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
-            <key>teamID</key><string>${TEAM_ID}</string>
-            <key>signingStyle</key><string>automatic</string>
-          </dict></plist>
-          PLIST
-          xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
-            -exportPath "$RUNNER_TEMP/export" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-
-      - name: Anahtarı sil
-        if: always()
-        run: rm -rf "$RUNNER_TEMP/keys"
-
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: bash scripts/build-ios.sh
