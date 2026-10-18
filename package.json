@@ -1,0 +1,15 @@
+{
+  "name": "koyden-sehre",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Köyden Şehre - köyünü kur, kasabaya, şehre büyüt",
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/android": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/assets": "^3.0.5"
+  }
+}

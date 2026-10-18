@@ -1,0 +1,14 @@
+{
+  "appId": "com.bolatemre.memleketim",
+  "appName": "Köyden Şehre",
+  "webDir": "www",
+  "backgroundColor": "#5cc0dd",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#5cc0dd"
+  },
+  "android": {
+    "backgroundColor": "#5cc0dd"
+  }
+}
