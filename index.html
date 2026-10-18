@@ -201,6 +201,18 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 .namebox input{width:100%;font-family:inherit;font-size:20px;font-weight:600;padding:10px 12px;border-radius:14px;border:3px solid var(--panel-edge);background:#fff;color:#4a2e17;text-align:center;-webkit-user-select:text;user-select:text}
 .namebox .sug{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;margin:10px 0 12px}
 .namebox .sug .btn{font-size:14px;padding:6px 8px}
+.dd{background:var(--chip);border-radius:12px;padding:6px 4px;text-align:center;font-size:12px;line-height:1.2}
+.dd b{display:block;font-size:12px;color:var(--ink-soft)}
+.dd.got{opacity:.5}
+.dd.now{background:linear-gradient(#ffe48a,#f2b632);color:#5a3a00;transform:scale(1.06);box-shadow:0 3px 0 #b9821a}
+.dd.now b{color:#5a3a00}
+.dailyg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 14px}
+.tv{display:flex;align-items:center;justify-content:space-around;background:#0f5b3a;border:5px solid #7a4a22;border-radius:18px;padding:12px;color:#fff;text-align:center}
+.tv small{display:block;font-size:13px;opacity:.85}
+.tv b{display:block;font-size:30px}
+.tv .dice{font-size:54px;line-height:1;letter-spacing:4px;color:#fffaf0}
+.tv .vs{font-size:22px;opacity:.6}
+.tvmsg{text-align:center;font-weight:600;min-height:44px;margin:12px 0}
 .stat{display:flex;justify-content:space-between;background:var(--chip);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-weight:600}
 </style>
 </head>
@@ -216,6 +228,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
     <div class="coins"><img class="coinimg" id="hudCoin" alt="" width="30" height="30"><span id="coins">0</span></div>
     <div class="pop" id="popPill" title="Boştaki işçi / toplam nüfus"><img id="popImg" alt=""><span id="pop">0/0</span></div>
     <div class="pop" id="clockPill" style="padding:3px 10px"><span id="clock">☀️ 12:00</span></div>
+    <div class="pop" id="sndPill" style="padding:3px 10px;font-size:17px">🔊</div>
   </div>
 </div>
 
@@ -244,6 +257,8 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
   <div id="sBody"></div>
 </section>
 <div class="toast" id="toast"></div>
+<div class="namebox" id="dailyBox" role="dialog" aria-modal="true"><div class="card"><h2 id="dailyTitle">Hoş geldin!</h2>
+<p>Her gün gel, ödülün büyüsün. 7. gün büyük hediye!</p><div class="dailyg" id="dailyDays"></div><button class="btn" id="dailyOk">Ödülü al</button></div></div>
 <div class="namebox" id="nameBox" role="dialog" aria-modal="true"><div class="card"><h2 id="nameTitle">Köyüne bir isim ver</h2>
 <p>Bu köy senin. Büyüyüp kasaba, şehir olsa da bu adla anılacak.</p>
 <input id="townIn" maxlength="18" placeholder="Örn. Yeşilyurt" autocomplete="off" enterkeyhint="done">
@@ -381,6 +396,7 @@ const DEF={
   lab:{name:'Araştırma Laboratuvarı',size:2,img:'b_lab',kind:'prod',recipes:['solarpanel','perfume'],workers:4,joy:10,price:90000,lvl:32,era:4,unique:true,desc:'Güneş paneli, parfüm. Siparişlerden +%20 yıldız.'},
   robotfac:{name:'Robot Fabrikası',size:2,img:'b_robotfac',kind:'prod',recipes:['robot'],pop:20,price:100000,lvl:33,era:4,unique:true,desc:'Robot üretir, +20 robot işçi.'},
   cayocagi:{name:'Çay Ocağı',size:2,img:'b_cayocagi',kind:'prod',recipes:['cay','oralet'],workers:1,price:150,lvl:2,era:1,worker:'f_12',desc:'Çay ve oralet, 1 dakikada demlenir.'},
+  kahvehane:{name:'Kahvehane',size:2,img:'b_kahvehane',kind:'service',joy:8,price:350,lvl:3,era:1,unique:true,kahve:true,desc:'+8 mutluluk. Tavla ve okey; köylülerin buluşma yeri.'},
   cami1:{name:'Köy Camii',size:2,img:'b_cami1',kind:'service',joy:10,price:500,lvl:2,era:1,unique:true,desc:'+10 mutluluk. Köyün huzuru.'},
   balikci:{name:'Balıkçı Barınağı',size:2,img:'b_balikci',kind:'prod',recipes:['hamsi','levrek','balikekmek'],workers:2,price:250,lvl:3,era:1,worker:'f_3',desc:'Hamsi, levrek, balık ekmek.'},
   halkoyun:{name:'Halk Oyunları Merkezi',size:2,img:'b_halkoyun',kind:'service',joy:12,price:800,lvl:4,era:1,unique:true,show:true,desc:'+12 mutluluk. Gösteri düzenle: horon, zeybek, halay!'},
@@ -391,7 +407,7 @@ const DEF={
   cami4:{name:'Modern Cami',size:2,img:'b_cami4',kind:'service',joy:30,price:60000,lvl:25,era:4,unique:true,desc:'+30 mutluluk.'},
   deco:{name:'Süs',size:1,kind:'deco'},
   obstacle:{name:'Engel',size:1,kind:'obstacle'},
-  animal:{size:.5,kind:'animal'},lamp:{size:.2,kind:'lamp'},veh:{size:.5,kind:'veh'}, villager:{size:.5,kind:'villager'}, cloud:{size:.5,kind:'cloud'}, sign:{size:1,kind:'sign'}, train:{size:1,kind:'train'}
+  animal:{size:.5,kind:'animal'},pet:{size:.5,kind:'pet'},lamp:{size:.2,kind:'lamp'},veh:{size:.5,kind:'veh'}, villager:{size:.5,kind:'villager'}, cloud:{size:.5,kind:'cloud'}, sign:{size:1,kind:'sign'}, train:{size:1,kind:'train'}
 };
 /* pacing: Township-like durations */
 CROPS.wheat.t=60;CROPS.corn.t=120;CROPS.carrot.t=180;CROPS.tealeaf.t=150;
@@ -399,7 +415,7 @@ CROPS.wheat.t=60;CROPS.corn.t=120;CROPS.carrot.t=180;CROPS.tealeaf.t=150;
   for(const k in DEF)if(DEF[k].every)DEF[k].every*=5;RECIPES.cay.t=60;RECIPES.oralet.t=60;})();
 const hasIcon=k=>!!IMG_SRC['i_'+k];
 const cropOK=k=>!!IMG_SRC['c_'+k+'0'];
-const SHOP=['field','road','cottage','bakery','cami1','cayocagi','feedmill','cowpen','market','balikci','coop','dairy','halkoyun','kebapci','house2','mine','kasap','smith','sheepfold','creamery','weaving'];
+const SHOP=['field','road','cottage','bakery','cami1','cayocagi','kahvehane','feedmill','cowpen','market','balikci','coop','dairy','halkoyun','kebapci','house2','mine','kasap','smith','sheepfold','creamery','weaving'];
 const ERAS=[{n:'Köy',list:SHOP},{n:'Kasaba',list:['cami2','townhouse','orchard','beehive','harbor','cafe','helipad','jamfactory','juicefactory','apart1','school','tailor','rowshop','pizzeria','post']},
   {n:'Şehir',list:['cami3','apartment','bank','hospital','skyscraper','airport','apron','stadium','furniture','electronics']},
   {n:'Teknoloji',list:['cami4','solar','wind','charger','ecotower','datacenter','maglev','drone','lab','robotfac']}];
@@ -509,7 +525,8 @@ function producible(){
   let grew=true;while(grew){grew=false;for(const r of rs){if(l.includes(r.out))continue;if(Object.keys(r.inp).every(k=>l.includes(k))){l.push(r.out);grew=true;}}}
   return l.filter(k=>!TOOLS.includes(k));
 }
-function genOrder(){
+function genOrder(){const eo=eventOrder();if(eo)return eo;const o=genOrder0();const ev=curEvent();if(ev&&ev.bonus)o.coins=Math.round(o.coins*ev.bonus);return o;}
+function genOrder0(){
   const pool=producible().sort(()=>Math.random()-.5);
   const n=Math.min(pool.length,1+Math.floor(Math.random()*(S.lvl>=3?3:2)));
   const items={};let val=0;pool.sort((a,b)=>Math.random()<.6?ITEMS[b].v-ITEMS[a].v:0);
@@ -528,6 +545,165 @@ function genWagons(){
   for(let i=0;i<3;i++){const k=pool[i%pool.length];const q=CROPS[k]?3+Math.floor(Math.random()*3):1+Math.floor(Math.random()*2);w.push({k,q,done:false});}
   return w;
 }
+
+/* ================= SES VE MÜZİK (tamamen kodla üretilir) ================= */
+const SND={ctx:null,on:{music:true,sfx:true},cache:{}};
+try{const o=JSON.parse(localStorage.getItem('kds-audio')||'{}');if('music'in o)SND.on.music=o.music;if('sfx'in o)SND.on.sfx=o.sfx;}catch(_){}
+function saveAudio(){try{localStorage.setItem('kds-audio',JSON.stringify(SND.on));}catch(_){}}
+function audioInit(){
+  if(SND.ctx){if(SND.ctx.state==='suspended')SND.ctx.resume();return;}
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;SND.ctx=new AC();
+  const c=SND.ctx;SND.master=c.createGain();SND.master.gain.value=.9;SND.master.connect(c.destination);
+  SND.mus=c.createGain();SND.mus.gain.value=SND.on.music?.55:0;SND.mus.connect(SND.master);
+  SND.fx=c.createGain();SND.fx.gain.value=SND.on.sfx?1:0;SND.fx.connect(SND.master);
+  startMusic();
+}
+document.addEventListener('pointerdown',audioInit,true);
+function pluckBuf(f){const k=Math.round(f);if(SND.cache[k])return SND.cache[k];const c=SND.ctx,sr=c.sampleRate,len=Math.floor(sr*1.6),b=c.createBuffer(1,len,sr),d=b.getChannelData(0);
+  const N=Math.max(2,Math.round(sr/f));const ring=new Float32Array(N);for(let i=0;i<N;i++)ring[i]=Math.random()*2-1;
+  let p=0;for(let i=0;i<len;i++){const nx=(p+1)%N;const v=.5*(ring[p]+ring[nx])*.996;d[i]=ring[p];ring[p]=v;p=nx;}
+  SND.cache[k]=b;return b;}
+function pluck(f,t,vol,dest){const c=SND.ctx,s=c.createBufferSource();s.buffer=pluckBuf(f);const g=c.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+1.4);
+  const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2600;s.connect(lp);lp.connect(g);g.connect(dest);s.start(t);s.stop(t+1.5);}
+function tone(type,f1,f2,dur,vol,t,dest){const c=SND.ctx;t=t||c.currentTime;const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(f1,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(dest||SND.fx);o.start(t);o.stop(t+dur+.02);}
+function noise(dur,vol,t,hp,dest){const c=SND.ctx;t=t||c.currentTime;const b=c.createBuffer(1,Math.floor(c.sampleRate*dur),c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
+  const s=c.createBufferSource();s.buffer=b;const f=c.createBiquadFilter();f.type='highpass';f.frequency.value=hp||1200;const g=c.createGain();g.gain.value=vol;s.connect(f);f.connect(g);g.connect(dest||SND.fx);s.start(t);}
+// Hicaz makamı (Re karar): Re Mi♭ Fa♯ Sol La Si♭ Do Re
+const HICAZ=[293.66,311.13,369.99,392,440,466.16,523.25,587.33,659.26];
+const MELODY=[[4,2],[5,1],[4,1],[3,2],[2,1],[1,1],[2,2],[3,2],[4,4],[4,1],[5,1],[6,1],[5,1],[4,2],[3,1],[2,1],[1,2],[2,1],[1,1],[0,4],
+  [0,1],[1,1],[2,1],[3,1],[4,2],[7,2],[6,1],[5,1],[4,2],[5,1],[4,1],[3,1],[2,1],[3,2],[2,1],[1,1],[0,4]];
+function startMusic(){const c=SND.ctx;let next=c.currentTime+.4,i=0,beat=0;const step=.26;
+  const drone=c.createOscillator(),dg=c.createGain();drone.type='sine';drone.frequency.value=146.83;dg.gain.value=.035;drone.connect(dg);dg.connect(SND.mus);drone.start();
+  setInterval(()=>{if(!SND.ctx)return;while(next<c.currentTime+.6){const[n,l]=MELODY[i%MELODY.length];
+      pluck(HICAZ[n],next,.22,SND.mus);if(l>=2&&Math.random()<.5)pluck(HICAZ[n]/2,next+.01,.08,SND.mus);
+      for(let k=0;k<l;k++){const tt=next+k*step,b=(beat+k)%8;if(b===0||b===5)tone('sine',95,55,.22,.16,tt,SND.mus);else if(b===2||b===6)noise(.06,.05,tt,2500,SND.mus);}
+      next+=l*step;beat=(beat+l)%8;i++;}},200);}
+const sfx={
+  pop:()=>SND.ctx&&tone('sine',520,1050,.12,.25),
+  coin:()=>{if(!SND.ctx)return;const t=SND.ctx.currentTime;tone('square',1320,null,.08,.08,t);tone('square',1760,null,.16,.08,t+.07);},
+  clink:()=>{if(!SND.ctx)return;const t=SND.ctx.currentTime;tone('sine',2650,null,.25,.12,t);tone('sine',3150,null,.2,.07,t+.09);},
+  thud:()=>{if(!SND.ctx)return;tone('sine',150,60,.25,.35);noise(.08,.08,null,400);},
+  blip:()=>SND.ctx&&tone('triangle',880,1320,.07,.12),
+  moo:()=>{if(!SND.ctx)return;const c=SND.ctx,t=c.currentTime,o=c.createOscillator(),f=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';o.frequency.setValueAtTime(165,t);o.frequency.linearRampToValueAtTime(140,t+.3);o.frequency.linearRampToValueAtTime(105,t+.9);
+    f.type='lowpass';f.frequency.setValueAtTime(500,t);f.frequency.linearRampToValueAtTime(900,t+.3);f.frequency.linearRampToValueAtTime(350,t+.9);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.2,t+.12);g.gain.exponentialRampToValueAtTime(.0001,t+1);
+    o.connect(f);f.connect(g);g.connect(SND.fx);o.start(t);o.stop(t+1.05);},
+  rooster:()=>{if(!SND.ctx)return;const t=SND.ctx.currentTime;tone('sawtooth',520,700,.14,.07,t);tone('sawtooth',700,760,.14,.07,t+.16);tone('sawtooth',760,980,.18,.08,t+.32);tone('sawtooth',980,620,.5,.07,t+.52);},
+  dice:()=>{if(!SND.ctx)return;const t=SND.ctx.currentTime;for(let i=0;i<7;i++)noise(.03,.12,t+i*.06+Math.random()*.03,1800);},
+  fanfare:()=>{if(!SND.ctx)return;const t=SND.ctx.currentTime;[0,2,4,7].forEach((n,i)=>pluck(HICAZ[n]*2,t+i*.12,.25,SND.fx));}
+};
+function setAudio(k,v){SND.on[k]=v;saveAudio();if(SND.ctx){if(k==='music')SND.mus.gain.value=v?.55:0;else SND.fx.gain.value=v?1:0;}soundPill();}
+function soundPill(){const el=$('sndPill');if(el)el.textContent=SND.on.music||SND.on.sfx?'🔊':'🔇';}
+function openSound(){openSheet('Ses',()=>{$('sBody').innerHTML=`<div class="row"><div class="mid"><div class="t">Müzik</div><div class="d">Hicaz makamında bağlama ezgisi</div></div><button class="btn ${SND.on.music?'':'alt'}" id="tMus">${SND.on.music?'Açık':'Kapalı'}</button></div>
+  <div class="row"><div class="mid"><div class="t">Efektler</div><div class="d">Hasat, altın, çay kaşığı, inek, horoz…</div></div><button class="btn ${SND.on.sfx?'':'alt'}" id="tSfx">${SND.on.sfx?'Açık':'Kapalı'}</button></div>`;
+  $('tMus').onclick=()=>{audioInit();setAudio('music',!SND.on.music);sheetCtx();};$('tSfx').onclick=()=>{audioInit();setAudio('sfx',!SND.on.sfx);sheetCtx();};});}
+
+/* ================= GÜNLÜK ÖDÜL ================= */
+const DAILY=[{coins:100,t:'100 altın'},{items:{nails:3},t:'3 çivi'},{coins:250,t:'250 altın'},{items:{shovel:1,axe:1},t:'Kürek + balta'},{coins:500,t:'500 altın'},{items:{map:1,pickaxe:1},t:'Harita parçası + kazma'},{coins:1200,items:{cake:2},t:'1200 altın + 2 pasta'}];
+const dayKey=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');};
+function checkDaily(after){
+  if(DEMO){if(after)after();return;}
+  const today=dayKey(now()),yest=dayKey(now()-86400000);S.daily=S.daily||{last:null,streak:0};
+  if(S.daily.last===today){if(after)after();return;}
+  const streak=S.daily.last===yest?S.daily.streak%7+1:1;
+  $('dailyDays').innerHTML=DAILY.map((r,i)=>`<div class="dd ${i+1<streak?'got':i+1===streak?'now':''}"><b>${i+1}. gün</b><span>${r.t}</span></div>`).join('');
+  $('dailyTitle').textContent=streak>1?`${streak}. gün üst üste! 🎉`:'Hoş geldin!';
+  $('dailyBox').classList.add('on');
+  $('dailyOk').onclick=()=>{const r=DAILY[streak-1];S.coins+=r.coins||0;for(const[k,q]of Object.entries(r.items||{}))addItem(k,q);
+    S.daily={last:today,streak};$('dailyBox').classList.remove('on');sfx.coin();setTimeout(sfx.coin,140);toast('Günlük ödül: '+r.t);changed();if(after)after();};
+}
+
+/* ================= MEVSİMLER VE BAYRAMLAR ================= */
+function season(){const m=new Date(now()).getMonth();return m===11||m<2?'kis':m<5?'ilkbahar':m<8?'yaz':'sonbahar';}
+const SEASON_NAME={kis:'Kış',ilkbahar:'İlkbahar',yaz:'Yaz',sonbahar:'Sonbahar'};
+const SEASON_TINT={kis:'rgba(255,255,255,.38)',ilkbahar:'rgba(255,190,225,.07)',yaz:null,sonbahar:'rgba(255,140,30,.16)'};
+// Dini bayram tarihleri yaklaşıktır (Diyanet takvimine göre her yıl güncellenmeli)
+const EVENTS=[
+ {id:'cumhuriyet',n:'Cumhuriyet Bayramı',md:['10-28','10-30'],msg:'Cumhuriyet Bayramımız kutlu olsun! Bayram boyunca siparişlerde +%50 altın.',bonus:1.5,flag:true},
+ {id:'zafer',n:'30 Ağustos Zafer Bayramı',md:['08-30','08-30'],msg:'Zafer Bayramımız kutlu olsun! Siparişlerde +%30 altın.',bonus:1.3,flag:true},
+ {id:'cocuk',n:'23 Nisan Ulusal Egemenlik ve Çocuk Bayramı',md:['04-23','04-23'],msg:'23 Nisan kutlu olsun! Çocuklar pasta, kurabiye ve meyve suyu istiyor.',items:['cake','cookie','juice'],flag:true},
+ {id:'genclik',n:'19 Mayıs Gençlik ve Spor Bayramı',md:['05-19','05-19'],msg:'19 Mayıs kutlu olsun! Siparişlerde +%30 altın.',bonus:1.3,flag:true},
+ {id:'hidrellez',n:'Hıdrellez',md:['05-05','05-06'],msg:'Hıdrellez geldi! Halk oyunları gösterileri bedava.',freeShow:true,bunting:true},
+ {id:'yilbasi',n:'Yılbaşı',md:['12-31','01-01'],msg:'Mutlu yıllar! Herkes pasta ve kurabiye istiyor.',items:['cake','cookie'],bunting:true},
+ {id:'ramazan',n:'Ramazan Bayramı',dates:[['2027-03-09','2027-03-11'],['2028-02-26','2028-02-28']],msg:'Bayramınız mübarek olsun! Komşular kurabiye, künefe ve pasta bekliyor.',items:['cookie','kunefe','cake','simit'],bunting:true},
+ {id:'kurban',n:'Kurban Bayramı',dates:[['2027-05-16','2027-05-19'],['2028-05-04','2028-05-07']],msg:'Bayramınız mübarek olsun! Kebap siparişleri bol.',items:['meat','adana','urfa','iskender'],bunting:true}
+];
+function curEvent(){const d=new Date(now()),md=String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),ymd=dayKey(now());
+  for(const e of EVENTS){if(e.md){const[a,b]=e.md;if(a<=b?(md>=a&&md<=b):(md>=a||md<=b))return e;}
+    if(e.dates)for(const[a,b]of e.dates)if(ymd>=a&&ymd<=b)return e;}return null;}
+function eventNotice(){const ev=curEvent();if(!ev||DEMO)return;const k=ev.id+dayKey(now());S.evSeen=S.evSeen||{};if(S.evSeen[k])return;S.evSeen[k]=1;save();
+  setTimeout(()=>{sfx.fanfare();talk('p_baskan',ev.msg,[['Sağ ol!',null]]);},900);}
+function eventOrder(){const ev=curEvent();if(!ev||!ev.items)return null;const pr=producible();const ok=ev.items.filter(k=>pr.includes(k));if(!ok.length||Math.random()>.45)return null;
+  const it={};ok.sort(()=>Math.random()-.5).slice(0,1+Math.floor(Math.random()*2)).forEach(k=>it[k]=1+Math.floor(Math.random()*2));
+  const v=Object.entries(it).reduce((a,[k,q])=>a+ITEMS[k].v*q,0),f=FOLK[Math.floor(Math.random()*FOLK.length)];
+  return {id:Math.random().toString(36).slice(2),who:'p_baskan',folk:f.n+' · '+f.r,bayram:ev.n,items:it,coins:Math.round(v*1.8*orderMul()),xp:Math.max(4,Math.round(v/4))};}
+function drawFlag(x,y,s,turk){ctx.save();ctx.translate(x,y);ctx.strokeStyle='#5b4a3a';ctx.lineWidth=2*s;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-40*s);ctx.stroke();
+  const w=26*s,h=17*s,wave=Math.sin(now()/300+x)*1.5*s;ctx.translate(1,-40*s);
+  if(turk){ctx.fillStyle='#e30a17';ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(w/2,wave,w,0);ctx.lineTo(w,h);ctx.quadraticCurveTo(w/2,h+wave,0,h);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(w*.38,h/2,h*.25,0,7);ctx.fill();ctx.fillStyle='#e30a17';ctx.beginPath();ctx.arc(w*.42,h/2,h*.2,0,7);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?h*.05:h*.125;ctx.lineTo(w*.6+Math.cos(a)*r,h/2+Math.sin(a)*r);}ctx.fill();}
+  else{const cols=['#e2483d','#ffd23a','#3da5f5','#5fc03a'];for(let i=0;i<4;i++){ctx.fillStyle=cols[i];ctx.beginPath();ctx.moveTo(i*w/4,0);ctx.lineTo((i+1)*w/4,0);ctx.lineTo((i+.5)*w/4,h*.9+wave);ctx.closePath();ctx.fill();}}
+  ctx.restore();}
+function drawEventDeco(t){const ev=curEvent();if(!ev||!(ev.flag||ev.bunting))return;
+  for(const e of S.ents){if(!['hall','cami1','cami2','cami3','cami4','school'].includes(e.type)||!cellUnlocked(e.gx,e.gy))continue;const r=rectOf(e);if(r)drawFlag(r.x+r.w*.85,r.y+r.h*.55,1.4,!!ev.flag);}
+  for(const l of lamps()){const p=iso(l.gx,l.gy);drawFlag(p.x+2,p.y-30,.7,!!ev.flag);}}
+const WX=[];
+function drawWeather(t){const s=season();if(s==='yaz'){WX.length=0;return;}
+  const want=s==='kis'?90:s==='sonbahar'?26:22;ctx.save();ctx.setTransform(DPR,0,0,DPR,0,0);
+  while(WX.length<want)WX.push({x:Math.random()*W,y:Math.random()*H,v:.4+Math.random()*.8,r:Math.random()*6.28,s:Math.random()});
+  const dt=Math.min(50,t-(drawWeather.l||t));drawWeather.l=t;
+  for(const p of WX){if(s==='kis'){p.y+=p.v*dt*.06;p.x+=Math.sin(t/900+p.r)*.3;ctx.fillStyle='rgba(255,255,255,.9)';ctx.beginPath();ctx.arc(p.x,p.y,1.5+p.s*2.2,0,7);ctx.fill();}
+    else{p.y+=p.v*dt*.035;p.x+=Math.sin(t/700+p.r)*.6+.15;p.r+=.02;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);
+      ctx.fillStyle=s==='sonbahar'?['#d9732a','#b84d1f','#e8a530'][Math.floor(p.s*3)]:['#ffc2dc','#ffe0ec','#fff'][Math.floor(p.s*3)];ctx.beginPath();ctx.ellipse(0,0,s==='sonbahar'?5:3.5,s==='sonbahar'?2.6:2.2,0,0,7);ctx.fill();ctx.restore();}
+    if(p.y>H+10){p.y=-10;p.x=Math.random()*W;}if(p.x>W+10)p.x=-10;if(p.x<-10)p.x=W+10;}
+  ctx.restore();}
+
+/* ================= TAVLA (Çay Ocağı / Kahvehane) ================= */
+const ZAR=['','yek','dü','se','cihar','beş','şeş'],CIFT={1:'Hep yek',2:'Dubara',3:'Dü se',4:'Dört cihar',5:'Dü beş',6:'Düşeş'};
+const zarAd=(a,b)=>a===b?CIFT[a]+'!':(ZAR[Math.max(a,b)]+' '+ZAR[Math.min(a,b)]).replace(/^./,c=>c.toLocaleUpperCase('tr'))+'!';
+const DIE='⚀⚁⚂⚃⚄⚅';
+function openTavla(){
+  const today=dayKey(now());S.tavla=S.tavla&&S.tavla.day===today?S.tavla:{day:today,plays:0};
+  const G={me:0,op:0,a:[6,5],b:[3,3],msg:'Hacı Osman: “Gel bakalım evlat, üç elde iki alan kazanır!”',rolling:false,done:false};
+  const free=()=>S.tavla.plays<3;
+  openSheet('Tavla · Hacı Osman',()=>{
+    $('sBody').innerHTML=`<p class="sub">${free()?`Bugün ${3-S.tavla.plays} bedava oyun hakkın var.`:'Bedava hakkın bitti; her oyun 2 çay.'} Kazanırsan ${40+S.lvl*20} altın.</p>
+    <div class="tv"><div><small>Sen</small><b>${G.me}</b><div class="dice">${DIE[G.a[0]-1]}${DIE[G.a[1]-1]}</div></div><div class="vs">—</div><div><small>Hacı Osman</small><b>${G.op}</b><div class="dice">${DIE[G.b[0]-1]}${DIE[G.b[1]-1]}</div></div></div>
+    <p class="tvmsg">${G.msg}</p><div style="text-align:center"><button class="btn" id="roll" ${G.rolling?'disabled':''}>${G.done?'Yeni oyun':'Zar at'}</button></div>`;
+    $('roll').onclick=()=>{
+      if(G.done){if(!free()&&!canTake({cay:2})){toast('Çayın kalmadı, Çay Ocağı’nda demle');return;}G.me=0;G.op=0;G.done=false;G.msg='Yeni oyun! Zarlar senin.';G.started=false;sheetCtx();return;}
+      if(!G.started){if(!free()){if(!canTake({cay:2})){toast('Çayın kalmadı, Çay Ocağı’nda demle');return;}take({cay:2});}S.tavla.plays++;G.started=true;save();}
+      G.rolling=true;audioInit();sfx.dice();let n=0;const iv=setInterval(()=>{G.a=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];G.b=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];G.msg='Zarlar dönüyor…';sheetCtx();
+        if(++n>=8){clearInterval(iv);G.rolling=false;const sa=(G.a[0]+G.a[1])*(G.a[0]===G.a[1]?2:1),sb=(G.b[0]+G.b[1])*(G.b[0]===G.b[1]?2:1);
+          if(sa>sb){G.me++;G.msg=`Sen: “${zarAd(...G.a)}” · eli aldın!`;sfx.pop();}else if(sb>sa){G.op++;G.msg=`Hacı Osman: “${zarAd(...G.b)} Hehe!”`;}else G.msg='Berabere, tekrar at!';
+          if(G.me===2){G.done=true;const w=40+S.lvl*20;S.coins+=w;gainXP(6);G.msg=`Kazandın! +${w} altın. Hacı Osman: “Vay, zar bugün sana güldü!”`;sfx.fanfare();changed();}
+          if(G.op===2){G.done=true;G.msg='Hacı Osman kazandı: “Bu işin ustası benim evlat, yarın yine gel!”';}
+          sheetCtx();}},90);};
+  });
+}
+
+/* ================= KÖY HAYVANLARI (görseller gelince açılır) ================= */
+const PETS=[];
+const PET_INFO={a_cat:{w:30,sp:.32,say:['Miyav!','Mırrr…','Miyaaav!']},a_dog:{w:36,sp:.4,say:['Hav hav!','Hav!','Vuf!']},a_stork:{w:46,say:['Lak lak!','Lak lak lak!']}};
+function spawnPets(){PETS.length=0;if(DEMO&&false)return;const cells=[];for(const[x,y]of allRoads())if(cellUnlocked(x,y))cells.push([x,y]);if(!cells.length)return;
+  const add=(k,n)=>{if(!IMG_SRC[k])return;for(let i=0;i<n;i++){const c=cells[Math.floor(Math.random()*cells.length)];PETS.push({type:'pet',k,cx:c[0]+.5,cy:c[1]+.5,tx:c[0]+.5,ty:c[1]+.5,wait:Math.random()*3000});}};
+  add('a_cat',2);add('a_dog',1);
+  if(IMG_SRC.a_stork){for(const e of S.ents.filter(e=>['hall','cami1','farmhouse','cottage'].includes(e.type)).slice(0,2))PETS.push({type:'pet',k:'a_stork',on:e,gx:e.gx,gy:e.gy,cx:e.gx+1,cy:e.gy+1});}}
+function stepPets(t){const dt=Math.min(100,t-(stepPets.l||t));stepPets.l=t;
+  for(const p of PETS){if(p.on){p.gx=p.on.gx;p.gy=p.on.gy+.6;continue;}
+    if(p.wait>0){p.wait-=dt;p.moving=false;}else{const dx=p.tx-p.cx,dy=p.ty-p.cy,d=Math.hypot(dx,dy),s=PET_INFO[p.k].sp*dt/1000;
+      if(d<=s){p.cx=p.tx;p.cy=p.ty;p.wait=1500+Math.random()*5000;const fx=Math.floor(p.cx),fy=Math.floor(p.cy);
+        const o=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1]].map(([a,b])=>[fx+a,fy+b]).filter(([x,y])=>cellUnlocked(x,y)&&(isRoad(x,y)||!occupied(x,y,1)));
+        if(o.length){const c=o[Math.floor(Math.random()*o.length)];p.tx=c[0]+.3+Math.random()*.4;p.ty=c[1]+.3+Math.random()*.4;p.flip=((p.tx-p.cx)-(p.ty-p.cy))<0;}}
+      else{p.cx+=dx/d*s;p.cy+=dy/d*s;p.moving=true;p.ph=(p.ph||0)+s*30;}}
+    p.gx=p.cx-.25;p.gy=p.cy-.25;}}
+function petRect(p){const im=IM[p.k];if(!im)return null;const w=PET_INFO[p.k].w,h=im.height*w/im.width;
+  if(p.on){const r=rectOf(p.on);if(!r)return null;return {x:r.x+r.w*.42-w/2,y:r.y+r.h*.08-h*.55,w,h,im};}
+  const q=iso(p.cx,p.cy);return {x:q.x-w/2,y:q.y-h+4,w,h,im};}
+function drawPet(p,t){const r=petRect(p);if(!r)return;const hop=p.moving?-Math.abs(Math.sin(p.ph||0))*2:0,bob=p.on?Math.sin(t/700)*1.5:0;
+  ctx.save();if(!p.on){ctx.fillStyle='rgba(30,40,10,.2)';ctx.beginPath();ctx.ellipse(r.x+r.w/2,r.y+r.h-2,r.w*.32,r.w*.1,0,0,7);ctx.fill();}
+  ctx.translate(r.x+r.w/2,r.y+r.h+hop+bob);if(p.flip)ctx.scale(-1,1);ctx.drawImage(r.im,-r.w/2,-r.h,r.w,r.h);ctx.restore();
+  if(p.love&&t-p.love<1400){const d=(t-p.love)/1400;ctx.globalAlpha=1-d;ctx.font='18px "Apple Color Emoji","Segoe UI Emoji",sans-serif';ctx.textAlign='center';ctx.fillText('❤️',r.x+r.w/2,r.y-6-d*30);ctx.globalAlpha=1;}}
 
 /* ================= IMAGES ================= */
 const IM={},MASK={},GEO={};
@@ -625,6 +801,7 @@ function drawGround(t){
     ctx.fillStyle='#e0b268';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(b.x,b.y);ctx.lineTo(r.x,r.y);ctx.lineTo(r.x,r.y+7);ctx.lineTo(b.x,b.y+7);ctx.lineTo(l.x,l.y+7);ctx.fill();
     diamond(x0,y0,s,s);ctx.fillStyle=pat('t_sand',320)||'#efc274';ctx.fill();}
   for(const g of regs){diamond(g.x-.02,g.y-.02,g.w+.04,g.h+.04);ctx.fillStyle=pat('t_grass',230)||'#73b83d';ctx.fill();}
+  {const tn=SEASON_TINT[season()];if(tn)for(const g of regs){diamond(g.x,g.y,g.w,g.h);ctx.fillStyle=tn;ctx.fill();}}
   for(const[x,y]of allRoads()){if(!cellUnlocked(x,y))continue;diamond(x,y,1,1);ctx.fillStyle=pat('t_dirt',260)||'#b9875a';ctx.fill();}
   // rails
   const ry=railRange();
@@ -713,12 +890,21 @@ function drawCloud(c,t){
     const x=p.x+dx+ox*r,y=p.y-r*.4+oy*r,R=rr*r;const g=ctx.createRadialGradient(x-R*.3,y-R*.4,R*.1,x,y,R);
     g.addColorStop(0,'#ffffff');g.addColorStop(.7,'#f2f6fa');g.addColorStop(1,'rgba(214,226,238,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,R,0,7);ctx.fill();}
 }
-function drawSign(s,t){const p=iso(s.gx+.5,s.gy+.5);drawSmall('x_sign',p.x,p.y+10,70);drawSmall('x_lock',p.x,p.y-58+Math.sin(t/400)*3,36);}
+function questBlock(){const q=curQ();if(!q)return null;const g=q.goals.find(g=>g.t==='block'&&!S.blocks.includes(g.b));return g?g.b:null;}
+function focusBlock(key){const[bx,by]=key.split(',').map(Number),p=iso(OFF+bx*BS+BS/2,OFF+by*BS+BS/2);
+  const sx=cam.x,sy=cam.y,t0=now();cam.z=Math.min(cam.z,.5);const go=()=>{const k=Math.min(1,(now()-t0)/700),e=1-(1-k)*(1-k);cam.x=sx+(p.x-sx)*e;cam.y=sy+(p.y-sy)*e;if(k<1)requestAnimationFrame(go);};go();
+  toast('Bulutlu bölgeye dokunup açabilirsin');}
+function drawSign(s,t){const p=iso(s.gx+.5,s.gy+.5);
+  if(s.block===questBlock())QARROW={x:p.x,y:p.y};
+  drawSmall('x_sign',p.x,p.y+10,70);drawSmall('x_lock',p.x,p.y-58+Math.sin(t/400)*3,36);}
+let QARROW=null;
+function drawQArrow(t){if(!QARROW)return;const p=QARROW;{const k=(Math.sin(t/260)+1)/2;ctx.save();ctx.strokeStyle=`rgba(255,214,60,${.5+.5*k})`;ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(p.x,p.y+8,70+k*14,35+k*7,0,0,7);ctx.stroke();
+    const ay=p.y-150-k*18;ctx.fillStyle='#ffd23a';ctx.strokeStyle='#7a4a00';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(p.x-26,ay);ctx.lineTo(p.x+26,ay);ctx.lineTo(p.x+26,ay+30);ctx.lineTo(p.x+44,ay+30);ctx.lineTo(p.x,ay+70);ctx.lineTo(p.x-44,ay+30);ctx.lineTo(p.x-26,ay+30);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}}
 /* animals in pens handled in extras; villagers walk roads */
 const VILL=[];
 function spawnVillagers(){
-  VILL.length=0;const kinds=S.era>=2?['w_farmer','w_post','w_shopper','w_kid','w_builder','w_milkmaid','w_crate','w_smith']:['w_farmer','w_crate','w_milkmaid','w_smith','w_farmer','w_crate'];const n=Math.min(16,Math.max(6,Math.floor(popTotal()/3)));
-  const rs=allRoads().filter(p=>cellUnlocked(p[0],p[1])),cnt=DEMO?Math.min(18,8+S.era*3):n;
+  setTimeout(spawnPets,0);VILL.length=0;const kinds=S.era>=2?['w_farmer','w_post','w_shopper','w_kid','w_builder','w_milkmaid','w_crate','w_smith']:['w_farmer','w_crate','w_milkmaid','w_smith','w_farmer','w_crate'];const n=Math.min(16,Math.max(6,Math.floor(popTotal()/3)));
+  const rs=allRoads().filter(p=>cellUnlocked(p[0],p[1])&&[[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>isRoad(p[0]+a,p[1]+b))),cnt=DEMO?Math.min(18,8+S.era*3):n;
   for(let i=0;i<cnt;i++){const c=rs[Math.floor(rand(i*5+2)*rs.length)];VILL.push({type:'villager',k:IMG_SRC[FOLK_IMG[FOLK[i%FOLK.length].n]]?FOLK_IMG[FOLK[i%FOLK.length].n]:kinds[i%kinds.length],who:FOLK[i%FOLK.length],cx:c[0]+.5,cy:c[1]+.5,tx:c[0]+.5,ty:c[1]+.5,prev:null,wait:rand(i)*2000});}
 }
 let lastT=0;
@@ -729,10 +915,13 @@ function stepVillagers(t){
     if(v.wait>0){v.wait-=dt;v.moving=false;}
     else{const dx=v.tx-v.cx,dy=v.ty-v.cy,d=Math.hypot(dx,dy),s=.42*dt/1000;
       if(d<=s){v.cx=v.tx;v.cy=v.ty;const fx=Math.floor(v.cx),fy=Math.floor(v.cy);
-        let opts=[[1,0],[-1,0],[0,1],[0,-1]].map(([a,b])=>[fx+a,fy+b]).filter(([x,y])=>isRoad(x,y));
-        const np=opts.filter(o=>!v.prev||o[0]!==v.prev[0]||o[1]!==v.prev[1]);if(np.length)opts=np;
+        let opts=[[1,0],[-1,0],[0,1],[0,-1]].map(([a,b])=>[fx+a,fy+b]).filter(([x,y])=>isRoad(x,y)&&cellUnlocked(x,y));
+        if(!opts.length){v.stuck=(v.stuck||0)+1;v.wait=1200;
+          if(v.stuck>2||!isRoad(fx,fy)){const rs=allRoads().filter(([x,y])=>cellUnlocked(x,y)&&[[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>isRoad(x+a,y+b)&&cellUnlocked(x+a,y+b)));
+            if(rs.length){const c=rs[Math.floor(Math.random()*rs.length)];v.cx=v.tx=c[0]+.5;v.cy=v.ty=c[1]+.5;v.prev=null;v.stuck=0;v.fadeIn=now();}}}
+        else{v.stuck=0;const np=opts.filter(o=>!v.prev||o[0]!==v.prev[0]||o[1]!==v.prev[1]);if(np.length)opts=np;
         if(Math.random()<.15)v.wait=800+Math.random()*2500;
-        const o=opts[Math.floor(Math.random()*opts.length)];v.prev=[fx,fy];v.tx=o[0]+.5;v.ty=o[1]+.5;v.flip=((v.tx-v.cx)-(v.ty-v.cy))<0;}
+        const o=opts[Math.floor(Math.random()*opts.length)];v.prev=[fx,fy];v.tx=o[0]+.5;v.ty=o[1]+.5;v.flip=((v.tx-v.cx)-(v.ty-v.cy))<0;}}
       else{v.cx+=dx/d*s;v.cy+=dy/d*s;v.moving=true;v.ph=(v.ph||0)+s*17;}}
     v.gx=v.cx-.25;v.gy=v.cy-.25;
   }
@@ -786,7 +975,7 @@ function darkness(m){const h=m/60,D=.7;if(h<5)return D;if(h<7)return D*(1-(h-5)/
 function sunset(m){const h=m/60;if(h<17&&h>7.5)return 0;if(h>=17&&h<20)return Math.sin((h-17)/3*Math.PI);if(h>=5&&h<=7.5)return Math.sin((h-5)/2.5*Math.PI)*.6;return 0;}
 function lamps(){if(darkness(gameMin())<.05&&!lamps.always)return lamps.list||[];
   if(!lamps.list||lamps.n!==allRoads().length+S.blocks.length){lamps.n=allRoads().length+S.blocks.length;
-    lamps.list=allRoads().filter(([x,y])=>(x*7+y*3)%5===0&&cellUnlocked(x,y)).map(([x,y])=>({type:'lamp',gx:x+.85,gy:y+.1}));}return lamps.list;}
+    lamps.list=ROADS.filter(([x,y])=>(x*7+y*3)%5===0).concat((S.roads||[]).filter((_,i)=>i%3===2)).filter(([x,y])=>cellUnlocked(x,y)).map(([x,y])=>({type:'lamp',gx:x+.85,gy:y+.1}));}return lamps.list;}
 lamps.always=true;
 function drawLamp(e,t){const p=iso(e.gx,e.gy),d=darkness(gameMin());ctx.strokeStyle='#3d3a3a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x,p.y-40);ctx.stroke();
   ctx.fillStyle='#2f2c2c';ctx.fillRect(p.x-5,p.y-46,10,7);ctx.fillStyle=d>.12?'#ffe7a3':'#e8eef2';ctx.beginPath();ctx.arc(p.x,p.y-38,4,0,7);ctx.fill();}
@@ -924,7 +1113,8 @@ function draw(){
   stepVillagers(t);checkTrain(t);
   CLOUDS=cloudsList();
   stepVeh(t);checkShip(t);
-  const list=S.ents.concat(VILL,VEH,CLOUDS,trainParts(t),lamps());
+  stepPets(t);
+  const list=S.ents.concat(VILL,VEH,CLOUDS,trainParts(t),lamps(),PETS);
   if(place)list.push({type:place.type,gx:place.gx,gy:place.gy,img:place.img,ghost:true});
   list.sort((a,b)=>depth(a)-depth(b));
   for(const e of list){
@@ -940,6 +1130,7 @@ function draw(){
       case 'train':drawTrainPart(e,t);break;
       case 'veh':drawVeh(e,t);break;
       case 'lamp':drawLamp(e,t);break;
+      case 'pet':drawPet(e,t);break;
       case 'villager':{const r=villRect(e);if(r){ctx.fillStyle='rgba(30,40,10,.22)';ctx.beginPath();ctx.ellipse(r.x+r.w/2,r.y+r.h-2,r.w*.3,r.w*.1,0,0,7);ctx.fill();
         const rc=e.react&&t-e.react.t0<3400?(t-e.react.t0):-1;
         if(rc<0&&showOn()){const i=e.cx*3+e.cy;ctx.save();ctx.translate(r.x+r.w/2,r.y+r.h-Math.abs(Math.sin(t/160+i))*9);ctx.rotate(Math.sin(t/220+i)*.16);drawWalker(r.im,0,0,r.w,Math.sin(t/160+i)*1.2,Math.sin(t/900+i)>0);ctx.restore();}
@@ -952,8 +1143,8 @@ function draw(){
         if(lv(e)>1){const x=r.x+r.w*.18,y=r.y+r.h*.3;ctx.fillStyle='#ffcf3a';star(x,y,15);ctx.fillStyle='#7a4a00';ctx.font='700 13px Fredoka,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lv(e),x,y+1);}}
     }
   }
-  drawPuffs(t);drawSky(t);
-  drawNight(t);drawEzan(t);
+  drawPuffs(t);drawEventDeco(t);drawSky(t);drawQArrow(t);QARROW=null;
+  drawNight(t);drawEzan(t);drawWeather(t);
   for(const e of S.ents){if(DEF[e.type].kind==='prod'||DEF[e.type].kind==='house')drawBubble(e,t);}
   drawFloats(t);
   drawTimers(t);
@@ -986,6 +1177,7 @@ function hit(sx,sy){
   const w=s2w(sx,sy);
   for(const e of S.ents){if(e._bub){const dx=w.x-e._bub.x,dy=w.y-e._bub.y;if(dx*dx+dy*dy<(e._bub.R+6)**2)return {e};}}
   if(shipHit(w))return {ship:true};
+  for(const p of PETS){const r=petRect(p);if(r&&w.x>r.x-6&&w.x<r.x+r.w+6&&w.y>r.y-6&&w.y<r.y+r.h+6)return {pet:p};}
   for(const v of VILL.concat(VEH)){const r=v.type==='veh'?vehRect(v):villRect(v);if(r&&w.x>r.x&&w.x<r.x+r.w&&w.y>r.y&&w.y<r.y+r.h)return {e:v};}
   // train
   for(const p of trainParts(now())){const c=iso(RAILX+.5,p.gy+.5);if(Math.abs(w.x-c.x)<40&&w.y<c.y+14&&w.y>c.y-70)return {train:true};}
@@ -1007,25 +1199,25 @@ function centerOf(e){const s=DEF[e.type].size;return iso(e.gx+s/2,e.gy+s/2);}
 function tapEnt(e){
   const d=DEF[e.type],t=now();e.bounce=t;const c=centerOf(e);
   switch(d.kind){
-    case 'villager':{const w=e.who,again=e.react&&t-e.react.t0<6000;e.taps=again?(e.taps||0)+1:0;
+    case 'villager':{sfx.blip();const w=e.who,again=e.react&&t-e.react.t0<6000;e.taps=again?(e.taps||0)+1:0;
       const text=e.taps>=2?w.annoyed[Math.floor(Math.random()*w.annoyed.length)]:w.lines[Math.floor(Math.random()*w.lines.length)];
       e.react={t0:t,text};e.wait=3400;e.moving=false;return;}
     case 'field':
       if(!e.crop){openPlant(e);return;}
       if(t<e.crop.end){toast(ITEMS[e.crop.c].n+' büyüyor: '+fmt(e.crop.end-t));return;}
       {const cr=CROPS[e.crop.c];if(!roomFor(cr.yield)){barnFull();return;}
-       addItem(e.crop.c,cr.yield);stat('harvest',e.crop.c,cr.yield);floatText(c.x,c.y-30,'+'+cr.yield,'i_'+e.crop.c);gainXP(cr.xp);e.crop=null;
+       addItem(e.crop.c,cr.yield);stat('harvest',e.crop.c,cr.yield);sfx.pop();floatText(c.x,c.y-30,'+'+cr.yield,'i_'+e.crop.c);gainXP(cr.xp);e.crop=null;
        // harvest neighbours that are ripe too
        let n=0;for(const f of S.ents)if(f.type==='field'&&f.crop&&t>=f.crop.end&&roomFor(CROPS[f.crop.c].yield)){const q=CROPS[f.crop.c].yield;addItem(f.crop.c,q);stat('harvest',f.crop.c,q);gainXP(CROPS[f.crop.c].xp);const fc=centerOf(f);floatText(fc.x,fc.y-30,'+'+q,'i_'+f.crop.c);f.crop=null;n++;}
        questTick();changed();}
       return;
     case 'prod':{
       const done=(e.q||[]).filter(j=>t>=j.end);
-      if(done.length){let got=0;for(const j of done){const r=RECIPES[j.r];if(!roomFor(r.q)){barnFull();break;}addItem(r.out,r.q);stat('made',r.out,r.q);gainXP(r.xp);floatText(c.x,c.y-100-got*28,'+'+r.q,'i_'+r.out);got++;e.q.splice(e.q.indexOf(j),1);}
+      if(done.length){let got=0;for(const j of done){const r=RECIPES[j.r];if(!roomFor(r.q)){barnFull();break;}addItem(r.out,r.q);stat('made',r.out,r.q);(r.out==='milk'?sfx.moo:(r.out==='cay'||r.out==='oralet')?sfx.clink:sfx.pop)();gainXP(r.xp);floatText(c.x,c.y-100-got*28,'+'+r.q,'i_'+r.out);got++;e.q.splice(e.q.indexOf(j),1);}
         if(got){questTick();changed();return;}}
       openProd(e);return;}
     case 'house':{const end=(e.last||0)+d.every*1000;
-      if(t>=end){const r=rentOf(d,e);S.coins+=r;e.last=t;gainXP(1);floatText(c.x,c.y-110,'+'+r,'i_coin');changed();}
+      if(t>=end){const r=rentOf(d,e);S.coins+=r;sfx.coin();e.last=t;gainXP(1);floatText(c.x,c.y-110,'+'+r,'i_coin');changed();}
       else openInfo(e,`${d.pop?'Kira':'Gelir'}: ${fmt(end-t)} sonra ${rentOf(d,e)} ${COIN}`);return;}
     case 'service':openService(e);return;
     case 'helipad':openService(e);return;
@@ -1143,14 +1335,15 @@ function openProd(e){
     bind('[data-r]',b=>{const r=RECIPES[b.dataset.r];if(!canTake(r.inp)||e.q.length>=qMax(e))return;take(r.inp);
       const t=now(),st=e.q.length?Math.max(t,e.q[e.q.length-1].end):t;e.q.push({r:b.dataset.r,start:st,end:st+Math.round(r.t*1000*speedMul()*lvSpeed(e))});
       changed();});
-  },e.type==='harbor'?heads(e,['Gemi',()=>{closeSheet();openShip();}]):heads(e));
+  },e.type==='harbor'?heads(e,['Gemi',()=>{closeSheet();openShip();}]):e.type==='cayocagi'?heads(e,['Tavla',()=>{closeSheet();openTavla();}]):heads(e));
 }
 function openInfo(e,text){const d=DEF[e.type];openSheet(d.name,()=>{$('sBody').innerHTML=`<p class="sub">${text}</p>${d.pop?`<div class="stat"><span>Nüfus katkısı</span><span>+${d.pop}</span></div>`:''}<div class="stat"><span>Mutluluk bonusu</span><span>+%${joy()}</span></div><div class="stat"><span>Bina seviyesi</span><span>${'★'.repeat(lv(e))}${'☆'.repeat(MAXLV-lv(e))}</span></div>`;},heads(e));}
 function openService(e){const d=DEF[e.type];openSheet(d.name,()=>{$('sBody').innerHTML=`<p class="sub">${d.desc||''}</p>
   <div class="stat"><span>Kasabanın mutluluğu</span><span>${joy()} (kiralar +%${joy()})</span></div><div class="stat"><span>Toplam enerji</span><span>${energy()} (üretim %${Math.round((1-speedMul())*100)} hızlı)</span></div>`+(d.show?`<div class="sec">Gösteri</div>
   <div class="row"><div class="mid"><div class="t">${showOn()?'Gösteri sürüyor! '+fmt(S.showUntil-now()):'Horon, zeybek, halay!'}</div><div class="d">${needHTML({ayran:3,simit:3})} · 2 dakika boyunca köylüler oynar, mutluluk +20</div></div>
-  <button class="btn alt" id="show" ${showOn()||!canTake({ayran:3,simit:3})?'disabled':''}>Başlat</button></div>`:'');
-  if($('show'))$('show').onclick=()=>{if(showOn()||!canTake({ayran:3,simit:3}))return;take({ayran:3,simit:3});S.showUntil=now()+120000;gainXP(15);closeSheet();toast('Davullar çalıyor, gösteri başladı!');changed();};},heads(e));}
+  <button class="btn alt" id="show" ${showOn()||(!(curEvent()&&curEvent().freeShow)&&!canTake({ayran:3,simit:3}))?'disabled':''}>${curEvent()&&curEvent().freeShow?'Bedava başlat':'Başlat'}</button></div>`:'');
+  if(d.kahve){$('sBody').insertAdjacentHTML('beforeend','<div style="text-align:center;margin-top:10px"><button class="btn" id="goTavla">🎲 Tavla oyna</button></div>');$('goTavla').onclick=()=>{closeSheet();openTavla();};}
+  if($('show'))$('show').onclick=()=>{const fr=curEvent()&&curEvent().freeShow;if(showOn()||(!fr&&!canTake({ayran:3,simit:3})))return;if(!fr)take({ayran:3,simit:3});S.showUntil=now()+120000;gainXP(15);closeSheet();toast('Davullar çalıyor, gösteri başladı!');changed();};},heads(e));}
 function openRoad(x,y){openSheet('Toprak yol',()=>{$('sBody').innerHTML='<p class="sub">Bu yolu kaldırabilirsin.</p><button class="btn alt" id="rmRoad">Yolu kaldır</button>';
   $('rmRoad').onclick=()=>{S.roads=S.roads.filter(p=>!(p[0]===x&&p[1]===y));rebuildRoads();closeSheet();changed();};});}
 function openBarn(e){
@@ -1165,7 +1358,7 @@ function openBarn(e){
 }
 function openHall(e){
   openSheet((S.townName||'Köy')+' Belediyesi',()=>{const p=popTotal(),u=workersUsed();
-    $('sBody').innerHTML=`<div class="stat"><span>${ERA_NAME[S.era]} adı</span><span>${S.townName||'-'} <button class="btn ghost" id="renameTown">Değiştir</button></span></div><div class="stat"><span>Çağ</span><span>${ERA_NAME[S.era]}</span></div><div class="stat"><span>Mutluluk</span><span>${joy()}</span></div><div class="stat"><span>Enerji</span><span>${energy()}</span></div><div class="stat"><span>Toplam nüfus</span><span>${p}</span></div><div class="stat"><span>Çalışan işçi</span><span>${u}</span></div>
+    $('sBody').innerHTML=`<div class="stat"><span>${ERA_NAME[S.era]} adı</span><span>${S.townName||'-'} <button class="btn ghost" id="renameTown">Değiştir</button></span></div><div class="stat"><span>Çağ</span><span>${ERA_NAME[S.era]}</span></div><div class="stat"><span>Mevsim</span><span>${SEASON_NAME[season()]}${curEvent()?' · 🎉 '+curEvent().n:''}</span></div><div class="stat"><span>Mutluluk</span><span>${joy()}</span></div><div class="stat"><span>Enerji</span><span>${energy()}</span></div><div class="stat"><span>Toplam nüfus</span><span>${p}</span></div><div class="stat"><span>Çalışan işçi</span><span>${u}</span></div>
     <div class="stat"><span>Boştaki işçi</span><span>${p-u}</span></div><div class="stat"><span>Açık bölge</span><span>${S.blocks.length}</span></div>
     <p class="sub">Yeni üretim binaları işçi ister. Daha fazla işçi için kulübe ve konak kur.</p>
     <div class="sec">Çağ vitrini</div><p class="sub">Her çağın gelişmiş hâlini gez. Kendi kaydın etkilenmez.</p>
@@ -1189,10 +1382,10 @@ function openMarket(e){
   },heads(e));
 }
 function openDeco(e){
-  openSheet('Süsü kaldır',()=>{$('sBody').innerHTML=`<div class="row"><div class="ico"><img class="ic" src="${IMG_SRC[e.img]}" alt=""></div>
-    <div class="mid"><div class="t">Alanı aç</div><div class="d">Yer açılır, 2 yıldız kazanırsın.</div></div>
+  openSheet('Süs',()=>{$('sBody').innerHTML=`<p class="sub">Üstteki <b>Taşı</b> ile istediğin yere götür ya da kaldır. Basılı tutup sürükleyerek de taşıyabilirsin.</p><div class="row"><div class="ico"><img class="ic" src="${IMG_SRC[e.img]}" alt=""></div>
+    <div class="mid"><div class="t">Kaldır</div><div class="d">Yer açılır, 2 yıldız kazanırsın.</div></div>
     <button class="btn alt" id="rm" ${S.coins<10?'disabled':''}>10 ${COIN}</button></div>`;
-    $('rm').onclick=()=>{if(S.coins<10)return;S.coins-=10;gainXP(2);S.ents=S.ents.filter(x=>x!==e);closeSheet();changed();};});
+    $('rm').onclick=()=>{if(S.coins<10)return;S.coins-=10;gainXP(2);S.ents=S.ents.filter(x=>x!==e);closeSheet();changed();};},[moveBtn(e)]);
 }
 function openObstacle(e){
   const o=OBST[e.img];
@@ -1207,11 +1400,11 @@ function openObstacle(e){
 function openOrders(){
   openSheet('Siparişler',()=>{
     $('sBody').innerHTML='<div class="orders">'+S.orders.map((o,i)=>{const ok=canTake(o.items);
-      return `<div class="order"><div class="who"><img src="${IMG_SRC[o.tea?(IMG_SRC.f_12?'f_12':o.who):o.who]}" alt="">${o.tea?'Çay siparişi · '+o.folk:PEOPLE[o.who]}</div>
+      return `<div class="order"><div class="who"><img src="${IMG_SRC[o.tea?(IMG_SRC.f_12?'f_12':o.who):o.who]}" alt="">${o.bayram?'🎉 '+o.bayram+' · '+o.folk:o.tea?'Çay siparişi · '+o.folk:PEOPLE[o.who]}</div>
       <div class="items">${Object.entries(o.items).map(([k,q])=>`<span class="it">${ic(k)}<em class="${have(k)<q?'miss':''}">${have(k)}/${q}</em></span>`).join('')}</div>
       <div class="foot"><span class="reward">${COIN} ${o.coins} ⭐ ${o.xp}</span><span><button class="btn ghost" data-skip="${i}">Değiştir</button>
       <button class="btn" data-ok="${i}" ${ok?'':'disabled'}>Teslim et</button></span></div></div>`;}).join('')+'</div>';
-    bind('[data-ok]',b=>{const i=+b.dataset.ok,o=S.orders[i];if(!canTake(o.items))return;take(o.items);S.coins+=o.coins;S.st.orders++;S.orders[i]=genOrder();heliGo();questTick();toast(PEOPLE[o.who]+': Teşekkürler! +'+o.coins+' altın');gainXP(o.xp);changed();});
+    bind('[data-ok]',b=>{const i=+b.dataset.ok,o=S.orders[i];if(!canTake(o.items))return;take(o.items);S.coins+=o.coins;S.st.orders++;sfx.coin();S.orders[i]=genOrder();heliGo();questTick();toast(PEOPLE[o.who]+': Teşekkürler! +'+o.coins+' altın');gainXP(o.xp);changed();});
     bind('[data-skip]',b=>{S.orders[+b.dataset.skip]=genOrder();changed();});
     while(S.orders.length<orderSlots())S.orders.push(genOrder());
   });
@@ -1279,7 +1472,7 @@ $('pYes').onclick=()=>{if(!place)return;const d=DEF[place.type];
   if(d.kind==='road'){S.coins-=p;S.roads.push([place.gx,place.gy]);rebuildRoads();const keep=place.type;const nx=[place.gx+1,place.gy];endPlace();changed();
     if(!occupied(nx[0],nx[1],1)&&S.coins>=10){place={type:keep,gx:nx[0],gy:nx[1]};barOn();}return;}
   S.coins-=p;const e={id:S.nextId++,type:place.type,gx:place.gx,gy:place.gy};if(d.kind==='house')e.last=now();
-  S.ents.push(e);e.bounce=now();const c=centerOf(e);floatText(c.x,c.y-60,'-'+p,'i_coin');gainXP(d.kind==='field'?1:5);endPlace();
+  S.ents.push(e);e.bounce=now();sfx.thud();const c=centerOf(e);floatText(c.x,c.y-60,'-'+p,'i_coin');gainXP(d.kind==='field'?1:5);endPlace();
   if(e.type==='harbor'&&S.ship.state==='locked')S.ship={state:'here',crates:genCrates(4),back:0};
   if(e.type==='airport'&&S.plane.state==='locked')S.plane={state:'here',crates:genCrates(6),back:0};
   if(d.kind==='helipad')while(S.orders.length<orderSlots())S.orders.push(genOrder());
@@ -1295,8 +1488,9 @@ function hud(){
   const n=S.orders.filter(o=>canTake(o.items)).length;const b=$('ordBadge');b.textContent=n;b.classList.toggle('on',n>0);
 }
 function changed(){hud();save();}
-setInterval(()=>{save();hud();},4000);setInterval(()=>{const m=gameMin(),h=m/60;$('clock').textContent=(h>=6.5&&h<19.5?'☀️ ':'🌙 ')+hhmm(m);},1000);
-$('clockPill').onclick=()=>{const m=gameMin(),ez=VAKIT.find(([n,s])=>s>m)||VAKIT[0];toast('Saat '+hhmm(m)+' · Sıradaki ezan: '+ez[0]+' '+hhmm(ez[1]));};document.addEventListener('visibilitychange',save);
+setInterval(()=>{save();hud();},4000);setInterval(()=>{const m=gameMin(),h=m/60;$('clock').textContent=(curEvent()?'🎉 ':'')+(h>=6.5&&h<19.5?'☀️ ':'🌙 ')+hhmm(m);if(m===360&&!DEMO)sfx.rooster();},1000);
+$('clockPill').onclick=()=>{const m=gameMin(),ez=VAKIT.find(([n,s])=>s>m)||VAKIT[0],ev=curEvent();toast((ev?ev.n+' · ':'')+SEASON_NAME[season()]+' · Saat '+hhmm(m)+' · Sıradaki ezan: '+ez[0]+' '+hhmm(ez[1]));};
+$('sndPill').onclick=openSound;setTimeout(soundPill,0);document.addEventListener('visibilitychange',save);
 
 /* ================= INPUT ================= */
 const ptrs=new Map();let drag=null,pinch=null,moved=false;
@@ -1329,6 +1523,7 @@ function onTap(sx,sy){
   const h=hit(sx,sy);if(!h)return;
   if(h.train){openTrain();return;}
   if(h.ship){openShip();return;}
+  if(h.pet){const p=h.pet,r=petRect(p);p.love=now();p.wait=2500;const s=PET_INFO[p.k].say;if(r)floatText(r.x+r.w/2+(cam.x-cam.x),r.y-4,s[Math.floor(Math.random()*s.length)]);sfx.blip();return;}
   if(h.road){openRoad(h.road[0],h.road[1]);return;}
   if(h.block){openExpand(h.block);return;}
   if(h.e)tapEnt(h.e);
@@ -1383,10 +1578,10 @@ function openQuest(){
   openSheet(q.title,()=>{const pr=qProgress(q),done=pr.every(p=>p.ok);
     $('sBody').innerHTML=`<div class="order"><div class="who"><img src="${IMG_SRC[q.who]}" alt="">${PEOPLE[q.who]}</div><p style="margin:0">${TN(q.intro)}</p></div>
     <div class="sec">${CHAPTERS[q.ch]}</div>`+pr.map(p=>`<div class="row"><div class="ico">${goalIcon(p.g)}</div><div class="mid"><div class="t">${goalText(p.g)}</div>
-      <div class="d">${p.g.t==='level'||p.g.t==='block'?(p.ok?'Tamam':'Henüz değil'):p.a+' / '+p.b}${p.ok?' ✔':''}</div><div class="prog"><i style="width:${p.b?Math.min(100,p.a/p.b*100):0}%"></i></div></div></div>`).join('')+
+      <div class="d">${p.g.t==='block'&&!p.ok?`<button class="btn alt" data-goto="${p.g.b}" style="padding:6px 12px;font-size:14px">Haritada göster</button> `:''}${p.g.t==='level'||p.g.t==='block'?(p.ok?'Tamam':'Henüz değil'):p.a+' / '+p.b}${p.ok?' ✔':''}</div><div class="prog"><i style="width:${p.b?Math.min(100,p.a/p.b*100):0}%"></i></div></div></div>`).join('')+
     `<div class="row"><div class="mid"><div class="t">Ödül</div><div class="d">${COIN} ${q.reward.coins||0}  ⭐ ${q.reward.xp||0} ${(q.reward.items?Object.entries(q.reward.items).map(([k,v])=>ic(k)+' '+v).join(' '):'')}</div></div>
     <button class="btn" id="qClaim" ${done?'':'disabled'}>Tamamla</button></div>`;
-    $('qClaim').onclick=()=>claimQuest();});
+    $('qClaim').onclick=()=>claimQuest();bind('[data-goto]',b=>{closeSheet();focusBlock(b.dataset.goto);});});
 }
 function claimQuest(){
   const q=curQ();if(!qDone(q))return;
@@ -1563,7 +1758,7 @@ function askTownName(after,rename){const box=$('nameBox'),inp=$('townIn');$('nam
     S.townName=v;save();box.classList.remove('on');hud();if(after)after();};
   inp.onkeydown=ev=>{if(ev.key==='Enter')$('townOk').click();};
   box.classList.add('on');setTimeout(()=>inp.focus(),300);}
-setTimeout(()=>{if(DEMO)return;const go=()=>{if(S.quest.i===0&&!S.quest.seen){S.quest.seen=true;showQuestTalk();}};if(!S.townName)askTownName(go);else go();},700);
+setTimeout(()=>{if(DEMO)return;const go0=()=>{if(S.quest.i===0&&!S.quest.seen){S.quest.seen=true;showQuestTalk();}};const go=()=>checkDaily(()=>{go0();eventNotice();});if(!S.townName)askTownName(go);else go();},700);
 requestAnimationFrame(draw);
 window.__S=()=>S;
 
