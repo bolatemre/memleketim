@@ -515,7 +515,8 @@ function save(){if(DEMO)return;try{localStorage.setItem(KEY,JSON.stringify(S));}
 const $=id=>document.getElementById(id);
 const now=()=>Date.now();
 const have=k=>S.inv[k]||0;
-const invCount=()=>Object.values(S.inv).reduce((a,b)=>a+b,0);
+// Aletler (çivi, kürek, kazma, kereste...) ayrı sandıkta durur, ambar yerini doldurmaz
+const invCount=()=>Object.entries(S.inv).reduce((a,[k,v])=>a+(TOOLS.includes(k)?0:v),0);
 const canTake=inp=>Object.entries(inp).every(([k,q])=>have(k)>=q);
 function take(inp){for(const[k,q]of Object.entries(inp)){S.inv[k]-=q;if(S.inv[k]<=0)delete S.inv[k];}}
 function addItem(k,q){S.inv[k]=have(k)+q;}
@@ -1383,9 +1384,11 @@ function openRoad(x,y){openSheet('Toprak yol',()=>{$('sBody').innerHTML='<p clas
   $('rmRoad').onclick=()=>{S.roads=S.roads.filter(p=>!(p[0]===x&&p[1]===y));rebuildRoads();closeSheet();changed();};});}
 function openBarn(e){
   openSheet('Ambar',()=>{
-    const ks=Object.keys(ITEMS).filter(k=>have(k)>0),cost={nails:2+S.capLvl*2},cc=100*(S.capLvl+1);
-    $('sBody').innerHTML=`<div class="stat"><span>Doluluk</span><span>${invCount()} / ${S.cap}</span></div>`+
+    const ks=Object.keys(ITEMS).filter(k=>have(k)>0&&!TOOLS.includes(k)),ts=Object.keys(ITEMS).filter(k=>have(k)>0&&TOOLS.includes(k)),cost={nails:2+S.capLvl*2},cc=100*(S.capLvl+1);
+    $('sBody').innerHTML=`<div class="stat"><span>Ürünler</span><span>${invCount()} / ${S.cap}</span></div>`+
       (ks.length?`<div class="inv">${ks.map(k=>`<div><b>${ic(k)}</b><span>${ITEMS[k].n}: ${have(k)}</span></div>`).join('')}</div>`:'<p class="sub">Ambar boş.</p>')+
+      `<div class="sec">Alet sandığı · sınırsız, ambarda yer kaplamaz</div>`+
+      (ts.length?`<div class="inv">${ts.map(k=>`<div><b>${ic(k)}</b><span>${ITEMS[k].n}: ${have(k)}</span></div>`).join('')}</div>`:'<p class="sub">Henüz alet yok.</p>')+
       `<div class="sec">Ambarı genişlet (+30)</div><div class="row"><div class="mid"><div class="d">${needHTML(cost)} ${COIN} ${cc}</div></div>
       <button class="btn alt" id="upBarn" ${!canTake(cost)||S.coins<cc?'disabled':''}>Genişlet</button></div>`;
     $('upBarn').onclick=()=>{if(!canTake(cost)||S.coins<cc)return;take(cost);S.coins-=cc;S.cap+=30;S.capLvl++;gainXP(5);toast('Ambar genişledi: '+S.cap);changed();};
