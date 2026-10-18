@@ -8,6 +8,18 @@ ASC_ISSUER_ID=ab9b64ae-e251-4e02-b25f-e51f11fccc2d
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 TMP="${RUNNER_TEMP:-/tmp}"
 
+echo "::group::Xcode 26 seç (App Store iOS 26 SDK istiyor)"
+XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+if [ -z "$XC" ]; then
+  echo "Bu sunucuda Xcode 26 yok. Kurulu olanlar:"; ls -d /Applications/Xcode*.app || true
+  echo "::error::Xcode 26 bulunamadı. Workflow'da 'runs-on: macos-15' yerine 'runs-on: macos-26' yaz."
+  exit 1
+fi
+sudo xcode-select -s "$XC/Contents/Developer"
+xcodebuild -version
+xcrun --sdk iphoneos --show-sdk-version
+echo "::endgroup::"
+
 echo "::group::Oyun dosyası"
 mkdir -p www
 test -f index.html || { echo "index.html bulunamadı: oyun dosyasını reponun ana dizinine yükle"; exit 1; }
