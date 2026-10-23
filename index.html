@@ -569,7 +569,7 @@ const isRoad=(x,y)=>ROADSET.has(x+','+y);
 function allRoads(){return S&&S.roads?ROADS.concat(S.roads):ROADS;}
 function rebuildRoads(){ROADSET=new Set(allRoads().map(p=>p+''));}
 const isRail=(x,y)=>x===RAILX;
-const xpNeed=l=>Math.round(40*Math.pow(l,1.8));
+const xpNeed=l=>Math.round(25*Math.pow(l,1.3)+20); // seviye başına ~10 (başta) ile ~40 (sonlarda) sipariş
 const T_TRAIN=()=>has('maglev')?600000:1800000,T_SHIP=3600000,T_PLANE=10800000;
 
 /* ================= STATE ================= */
@@ -677,7 +677,7 @@ function genOrder0(){
     return {id:Math.random().toString(36).slice(2),who:'p_dede',folk:f.n+' · '+f.r,tea:true,items:it,coins:Math.round((v*1.6+6)*orderMul()),xp:3};}
   const ppl=['p_elif','p_dede','p_firinci','p_zeynep','p_can','p_nine','p_usta','p_balikci'].concat(S.era>=2?PEOPLE2:[]).concat(S.era>=4?['p_piril']:[]);
   const who=ppl[Math.floor(Math.random()*ppl.length)];
-  return {id:Math.random().toString(36).slice(2),who,items,coins:Math.round((val*1.4+5)*orderMul()),xp:Math.max(2,Math.round(val/5*(has('lab')?1.2:1)))};
+  return {id:Math.random().toString(36).slice(2),who,items,coins:Math.round((val*1.4+5)*orderMul()),xp:Math.max(3,Math.round((val/4+S.lvl)*(has('lab')?1.2:1)))};
 }
 function genCrates(n){const pool=producible().sort(()=>Math.random()-.5);const w=[];
   for(let i=0;i<n;i++){const k=pool[i%pool.length];const q=CROPS[k]?4+Math.floor(Math.random()*4):1+Math.floor(Math.random()*(ITEMS[k].v>60?2:3));w.push({k,q,done:false});}return w;}
@@ -777,7 +777,7 @@ function eventNotice(){const ev=curEvent();if(!ev||DEMO)return;const k=ev.id+day
 function eventOrder(){const ev=curEvent();if(!ev||!ev.items)return null;const pr=producible();const ok=ev.items.filter(k=>pr.includes(k));if(!ok.length||Math.random()>.45)return null;
   const it={};ok.sort(()=>Math.random()-.5).slice(0,1+Math.floor(Math.random()*2)).forEach(k=>it[k]=1+Math.floor(Math.random()*2));
   const v=Object.entries(it).reduce((a,[k,q])=>a+ITEMS[k].v*q,0),f=FOLK[Math.floor(Math.random()*FOLK.length)];
-  return {id:Math.random().toString(36).slice(2),who:'p_baskan',folk:f.n+' · '+f.r,bayram:ev.n,items:it,coins:Math.round(v*1.8*orderMul()),xp:Math.max(4,Math.round(v/4))};}
+  return {id:Math.random().toString(36).slice(2),who:'p_baskan',folk:f.n+' · '+f.r,bayram:ev.n,items:it,coins:Math.round(v*1.8*orderMul()),xp:Math.max(4,Math.round(v/3+S.lvl))};}
 function drawFlag(x,y,s,turk){ctx.save();ctx.translate(x,y);ctx.strokeStyle='#5b4a3a';ctx.lineWidth=2*s;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-40*s);ctx.stroke();
   const w=26*s,h=17*s,wave=Math.sin(now()/300+x)*1.5*s;ctx.translate(1,-40*s);
   if(turk){ctx.fillStyle='#e30a17';ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(w/2,wave,w,0);ctx.lineTo(w,h);ctx.quadraticCurveTo(w/2,h+wave,0,h);ctx.closePath();ctx.fill();
@@ -1585,7 +1585,7 @@ function openOrders(){
       <div class="items">${Object.entries(o.items).map(([k,q])=>`<span class="it">${ic(k)}<em class="${have(k)<q?'miss':''}">${have(k)}/${q}</em></span>`).join('')}</div>
       <div class="foot"><span class="reward">${COIN} ${o.coins} ⭐ ${o.xp}</span><span><button class="btn ghost" data-skip="${i}">Değiştir</button>
       <button class="btn ${ok?'':'dis'}" data-ok="${i}" aria-disabled="${!ok}">Teslim et</button></span></div></div>`;}).join('')+'</div>';
-    bind('[data-ok]',b=>{const i=+b.dataset.ok,o=S.orders[i];if(!canTake(o.items)){const m=Object.entries(o.items).filter(([k,q])=>have(k)<q).map(([k,q])=>(q-have(k))+' '+ITEMS[k].n.toLocaleLowerCase('tr'));toast('Eksik: '+m.join(', ')+'. Eksiğe dokun, nerede yapıldığını gör.');return;}take(o.items);S.coins+=o.coins;S.st.orders++;sfx.coin();S.orders[i]=genOrder();heliGo();questTick();toast(PEOPLE[o.who]+': Teşekkürler! +'+o.coins+' altın');gainXP(o.xp);changed();});
+    bind('[data-ok]',b=>{const i=+b.dataset.ok,o=S.orders[i];if(!canTake(o.items)){const m=Object.entries(o.items).filter(([k,q])=>have(k)<q).map(([k,q])=>(q-have(k))+' '+ITEMS[k].n.toLocaleLowerCase('tr'));toast('Eksik: '+m.join(', ')+'. Eksiğe dokun, nerede yapıldığını gör.');return;}take(o.items);S.coins+=o.coins;S.st.orders++;sfx.coin();S.orders[i]=genOrder();heliGo();questTick();toast(PEOPLE[o.who]+': Teşekkürler! +'+o.coins+' altın · +'+o.xp+' ⭐');gainXP(o.xp);changed();});
     bind('[data-skip]',b=>{S.orders[+b.dataset.skip]=genOrder();changed();});
     while(S.orders.length<orderSlots())S.orders.push(genOrder());
   });
@@ -2323,6 +2323,7 @@ function askTownName(after,rename){const box=$('nameBox'),inp=$('townIn');$('nam
     S.townName=v;save();box.classList.remove('on');hud();if(after)after();};
   inp.onkeydown=ev=>{if(ev.key==='Enter')$('townOk').click();};
   box.classList.add('on');setTimeout(()=>inp.focus(),300);}
+setTimeout(()=>{if(!DEMO&&S.xp>=xpNeed(S.lvl))gainXP(0);},2500);
 setTimeout(()=>{if(DEMO)return;const go0=()=>{if(S.quest.i===0&&!S.quest.seen){S.quest.seen=true;showQuestTalk();}};const go=()=>checkDaily(()=>{go0();eventNotice();});if(!S.townName)askTownName(go);else go();},700);
 requestAnimationFrame(draw);
 window.__S=()=>S;
