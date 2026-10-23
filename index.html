@@ -533,7 +533,7 @@ const FAM={
  coop:{name:'Kümes',looks:['b_coop'],rl:{egg:1},lvl:3,price:300},
  dairy:{name:'Mandıra',looks:['dairy','b_creamery'],rl:{ayran:1,cream:3,butter:6,cheese:8},lvl:3,price:400,desc:'Ayran, krema, tereyağı, peynir.'},
  balikci:{name:'Balıkçı',looks:['b_balikci','b_harbor'],rl:{hamsi:1,levrek:2,balikekmek:4,fish:5},lvl:3,price:250,desc:'Balıklar; seviye 7’de liman olur, gemi seferleri başlar.'},
- halkoyun:{name:'Meydan',looks:['b_halkoyun'],lvl:4,price:800,desc:'Halk oyunları, okul, hastane, stadyum: mutluluk.'},
+ halkoyun:{name:'Meydan',looks:['b_halkoyun'],lvl:4,price:800,desc:'Halk oyunları ve kültür: mutluluk.'},
  kebapci:{name:'Kebapçı',looks:['b_kasap','b_kebapci','b_pizza'],rl:{meat:1,adana:2,urfa:2,cigkofte:2,lahmacun:4,ciger:4,beyti:6,iskender:7,kunefe:9},lvl:4,price:600,desc:'Etten künefeye 9 lezzet.'},
  mine:{name:'Maden',looks:['b_mine'],rl:{ore:1},lvl:4,price:600},
  smith:{name:'Demirci',looks:['b_smith','b_furniture','b_electronics','b_robotfac'],rl:{nails:1,shovel:2,axe:4,pickaxe:5,steel:7,gear:8,chair:9,sofa:10,copper:10,bulb:11,chip:11,battery:12,phone:13,laptop:14,robot:15},lvl:4,price:600,desc:'Örsten robot fabrikasına.'},
@@ -1006,9 +1006,9 @@ function drawBuildingExtras(e,r,t){
     if(d.worker==='w_milkmaid'&&e.type==='cowpen')drawSmall('x_bucket',x+20,y,18);}
   if(e.type==='station'&&S.train.state==='locked'){drawSmall('x_lock',r.x+r.w*.5,r.y+r.h*.55,34);}
   if(d.kind==='helipad')drawHeli(r,t);
-  if(e.type==='harbor')drawShip(r,t);
-  if(d.kind==='airport')drawPlane(r,t);
-  if(d.kind==='airport'&&S.plane.state==='away'){const x=r.x+r.w*.5,y=r.y+r.h*.15;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,22,0,7);ctx.fill();drawSmall('i_parcel',x,y+12,26);
+  if(isHarbor(e))drawShip(r,t);
+  if(isAirport(e))drawPlane(r,t);
+  if(isAirport(e)&&S.plane.state==='away'){const x=r.x+r.w*.5,y=r.y+r.h*.15;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,22,0,7);ctx.fill();drawSmall('i_parcel',x,y+12,26);
     const p=1-(S.plane.back-t)/T_PLANE;e._pl={x,y,p,ms:S.plane.back-t};}
   else e._pl=null;
 }
@@ -1150,21 +1150,32 @@ lamps.always=true;
 function drawLamp(e,t){const p=iso(e.gx,e.gy),d=darkness(gameMin());ctx.strokeStyle='#3d3a3a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x,p.y-40);ctx.stroke();
   ctx.fillStyle='#2f2c2c';ctx.fillRect(p.x-5,p.y-46,10,7);ctx.fillStyle=d>.12?'#ffe7a3':'#e8eef2';ctx.beginPath();ctx.arc(p.x,p.y-38,4,0,7);ctx.fill();}
 const LIT={house:1,prod:1,hall:1,barn:1,service:1,market:1,helipad:.4,airport:1,station:.6};
+// Gece: karanlık ayrı bir katmana çizilir, lambalar ve pencereler bu katmanda gerçekten "delik açar"
+let NC=null,NX=null;
 function drawNight(t){
   const m=gameMin(),d=darkness(m),ss=sunset(m);if(d<.01&&ss<.01)return;
   ctx.save();ctx.setTransform(DPR,0,0,DPR,0,0);
   if(ss>0){ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,110,30,${.8*ss})`;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';}
-  if(d>0){ctx.fillStyle=`rgba(14,22,58,${d})`;ctx.fillRect(0,0,W,H);}
   ctx.restore();
-  if(d<.12)return;const k=Math.min(1,(d-.12)/.3);
+  if(d<=0)return;
+  const cw=cv.width,ch=cv.height;if(!NC){NC=document.createElement('canvas');NX=NC.getContext('2d');}if(NC.width!==cw||NC.height!==ch){NC.width=cw;NC.height=ch;}
+  const k=Math.max(0,Math.min(1,(d-.08)/.3)),wt=ctx.getTransform();
+  NX.setTransform(1,0,0,1,0,0);NX.globalCompositeOperation='source-over';NX.clearRect(0,0,cw,ch);NX.fillStyle=`rgba(12,20,54,${d})`;NX.fillRect(0,0,cw,ch);
+  if(k>0){NX.setTransform(wt);NX.globalCompositeOperation='destination-out';
+    const hole=(x,y,rx,ry,a)=>{const g=NX.createRadialGradient(x,y,0,x,y,rx);g.addColorStop(0,`rgba(0,0,0,${a})`);g.addColorStop(.55,`rgba(0,0,0,${a*.55})`);g.addColorStop(1,'rgba(0,0,0,0)');
+      NX.fillStyle=g;NX.save();NX.translate(x,y);NX.scale(1,ry/rx);NX.translate(-x,-y);NX.beginPath();NX.arc(x,y,rx,0,7);NX.fill();NX.restore();};
+    for(const l of lamps()){const p=iso(l.gx,l.gy);hole(p.x,p.y-6,135,95,.92*k);}
+    for(const e of S.ents){const f=LIT[DEF[e.type].kind];if(!f||!cellUnlocked(e.gx,e.gy))continue;const r=rectOf(e);if(!r)continue;hole(r.x+r.w*.5,r.y+r.h*.62,r.w*.42,r.w*.3,.55*k*f);}
+    for(const v of VILL){const p=iso(v.cx,v.cy);hole(p.x,p.y-12,26,20,.25*k);}}
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(NC,0,0);ctx.restore();
+  if(k<=0)return;
   ctx.save();ctx.globalCompositeOperation='lighter';
-  for(const l of lamps()){const p=iso(l.gx,l.gy);const g=ctx.createRadialGradient(p.x,p.y-38,2,p.x,p.y-30,70);g.addColorStop(0,`rgba(255,214,120,${.85*k})`);g.addColorStop(.25,`rgba(255,190,90,${.35*k})`);g.addColorStop(1,'rgba(255,170,60,0)');
-    ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(p.x,p.y-20,70,58,0,0,7);ctx.fill();}
+  for(const l of lamps()){const p=iso(l.gx,l.gy);const g=ctx.createRadialGradient(p.x,p.y-38,2,p.x,p.y-24,95);g.addColorStop(0,`rgba(255,214,120,${.75*k})`);g.addColorStop(.2,`rgba(255,190,90,${.28*k})`);g.addColorStop(1,'rgba(255,170,60,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(p.x,p.y-14,95,70,0,0,7);ctx.fill();}
   for(const e of S.ents){const d2=DEF[e.type];const f=LIT[d2.kind];if(!f||!cellUnlocked(e.gx,e.gy))continue;const r=rectOf(e);if(!r)continue;
     const flick=.92+Math.sin(t/700+e.gx*3+e.gy)*.08,x=r.x+r.w*.5,y=r.y+r.h*.62,R=r.w*.32;
-    const g=ctx.createRadialGradient(x,y,4,x,y,R);g.addColorStop(0,`rgba(255,200,110,${.55*k*f*flick})`);g.addColorStop(1,'rgba(255,170,70,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,R,0,7);ctx.fill();
+    const g=ctx.createRadialGradient(x,y,4,x,y,R);g.addColorStop(0,`rgba(255,200,110,${.35*k*f*flick})`);g.addColorStop(1,'rgba(255,170,70,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,R,0,7);ctx.fill();
     for(let i=0;i<3;i++){const wx=r.x+r.w*(.3+i*.2),wy=r.y+r.h*(.5+((e.gx+i)%2)*.08);ctx.fillStyle=`rgba(255,226,140,${.5*k*f*flick})`;ctx.beginPath();ctx.arc(wx,wy,3.2,0,7);ctx.fill();}}
-  for(const v of VILL){const p=iso(v.cx,v.cy);const g=ctx.createRadialGradient(p.x,p.y-14,1,p.x,p.y-14,20);g.addColorStop(0,`rgba(255,220,150,${.18*k})`);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y-14,20,0,7);ctx.fill();}
   ctx.restore();
 }
 /* ================= EZAN ================= */
@@ -1226,7 +1237,7 @@ function shipPos(r,t){const base={x:r.x+r.w*.2,y:r.y+r.h*.86};if(S.ship.state===
   return S.ship.state==='here'?{...base,a:1}:null;}
 function drawShip(r,t){const p=shipPos(r,t),im=IM.v_ship;if(!p||!im)return;const w=86,h=im.height*w/im.width;
   ctx.save();ctx.globalAlpha=p.a;ctx.translate(p.x,p.y+Math.sin(t/700)*2);ctx.drawImage(im,-w/2,-h,w,h);ctx.restore();}
-function shipHit(w){const e=S.ents.find(x=>x.type==='harbor');if(!e||S.ship.state!=='here')return false;const r=rectOf(e);if(!r)return false;const p=shipPos(r,now());if(!p)return false;
+function shipHit(w){const e=S.ents.find(isHarbor);if(!e||S.ship.state!=='here')return false;const r=rectOf(e);if(!r)return false;const p=shipPos(r,now());if(!p)return false;
   return Math.abs(w.x-p.x)<46&&w.y<p.y&&w.y>p.y-60;}
 function checkShip(t){if(S.ship.state==='away'&&t>=S.ship.back){S.ship={state:'here',crates:genCrates(4),back:0};shipAnim={t0:t,leave:false};save();}
   if(S.plane.state==='away'&&t>=S.plane.back){S.plane={state:'here',crates:genCrates(6),back:0};planeAnim={t0:t,leave:false};save();toast('Kargo uçağı havalimanına indi!');}}
@@ -1243,7 +1254,7 @@ function cargoPanel(title,obj,intro,go,payMul){
 }
 function giftTools(n){const pool=['nails','nails','shovel','axe','pickaxe','map'];const got={};for(let i=0;i<n;i++){const k=pool[Math.floor(Math.random()*pool.length)];got[k]=(got[k]||0)+1;addItem(k,1);}
   return Object.entries(got).map(([k,q])=>q+' '+ITEMS[k].n).join(', ');}
-function openShip(){if(S.ship.state==='locked'){toast('Önce liman kur');return;}
+function openShip(){unlockTransport();if(S.ship.state==='locked'){toast('Kargo gemisi için Balıkçı’yı seviye 8’e yükselt (liman olur).');return;}
   cargoPanel('Kargo gemisi',()=>S.ship,'Gemi ambarını doldur. Gemi ana karaya gider, 1 saat sonra alet ve harita parçalarıyla döner.',()=>{
     const g=giftTools(3);gainXP(20);S.st.ships++;S.ship={state:'away',crates:[],back:now()+T_SHIP};shipAnim={t0:now(),leave:true};
     talk('p_balikci',`Gemi demir aldı! Dönüşte getireceği: ${g}.`,[['Harika',null]]);},1.3);}
@@ -1338,7 +1349,7 @@ function drawTimers(t){
     else if(e._bub&&e._bub.job){const j=e._bub.job;timerAt(e._bub.x,e._bub.y+e._bub.R+12,j.end-t,(t-j.start)/(j.end-j.start));}
   }
   for(const e of S.ents)if(e._pl)timerAt(e._pl.x,e._pl.y+34,e._pl.ms,e._pl.p);
-  for(const e of S.ents)if(e.type==='harbor'&&S.ship.state==='away'&&S.ship.back>t){const r=rectOf(e);if(r)timerAt(r.x+r.w*.25,r.y+r.h*.6,S.ship.back-t,1-(S.ship.back-t)/T_SHIP);}
+  for(const e of S.ents)if(isHarbor(e)&&S.ship.state==='away'&&S.ship.back>t){const r=rectOf(e);if(r)timerAt(r.x+r.w*.25,r.y+r.h*.6,S.ship.back-t,1-(S.ship.back-t)/T_SHIP);}
   if(S.train.state==='away'&&S.train.back>t){const c=iso(RAILX+.5,TRAIN_STOP);timerAt(c.x,c.y-40,S.train.back-t,1-(S.train.back-t)/T_TRAIN());}
 }
 function checkTrain(t){if(S.train.state==='away'&&t>=S.train.back){S.train={state:'here',wagons:genWagons(),back:0};trainArrive();save();}}
@@ -1391,7 +1402,7 @@ function tapEnt(e){
       if(t>=end){const r=rentOf(d,e);S.coins+=r;sfx.coin();e.last=t;gainXP(1);floatText(c.x,c.y-110,'+'+r,'i_coin');changed();}
       else openInfo(e,`${d.pop?'Kira':'Gelir'}: ${fmt(end-t)} sonra ${rentOf(d,e)} ${COIN}`);return;}
     case 'service':openService(e);return;
-    case 'helipad':openService(e);return;
+    case 'helipad':if(isAirport(e)){openSheet(DEF[e.type].name,()=>{$('sBody').innerHTML='<p class="sub">Havalimanın hazır. Kargo uçağını yükleyip gönder.</p><div style="text-align:center"><button class="btn" id="goPlane">✈️ Kargo uçağı</button></div>';$('goPlane').onclick=()=>{closeSheet();openPlane();};},heads(e));return;}openService(e);return;
     case 'airport':openPlane();return;
     case 'barn':openBarn(e);return;
     case 'hall':openHall(e);return;
@@ -1538,7 +1549,7 @@ function openProd(e){
     bind('[data-r]',b=>{const r=RECIPES[b.dataset.r];if(!canTake(r.inp)||e.q.length>=qMax(e))return;take(r.inp);
       const t=now(),st=e.q.length?Math.max(t,e.q[e.q.length-1].end):t;e.q.push({r:b.dataset.r,start:st,end:st+Math.round(r.t*1000*speedMul()*lvSpeed(e))});
       changed();});
-  },e.type==='harbor'?heads(e,['Gemi',()=>{closeSheet();openShip();}]):e.type==='cayocagi'?heads(e,['Tavla',()=>{closeSheet();openTavla();}]):heads(e));
+  },isHarbor(e)?heads(e,['Gemi',()=>{closeSheet();openShip();}]):e.type==='cayocagi'?heads(e,['Tavla',()=>{closeSheet();openTavla();}]):heads(e));
 }
 function openInfo(e,text){const d=DEF[e.type];openSheet(d.name,()=>{$('sBody').innerHTML=`<p class="sub">${text}</p>${d.pop?`<div class="stat"><span>Nüfus katkısı</span><span>+${d.pop}</span></div>`:''}<div class="stat"><span>Mutluluk bonusu</span><span>+%${joy()}</span></div><div class="stat"><span>Bina seviyesi</span><span>${maxLv(e)>5?'Sv. '+lv(e)+' / '+maxLv(e):'★'.repeat(lv(e))+'☆'.repeat(MAXLV-lv(e))}</span></div>`;},heads(e));}
 function openService(e){const d=DEF[e.type];openSheet(d.name,()=>{$('sBody').innerHTML=`<p class="sub">${d.desc||''}</p>
@@ -1698,8 +1709,13 @@ function migrateV3(o){if(!o||!o.ents)return o;const keep=[],best={};
     if(DEF[f]&&DEF[f].unique){if(best[f]){const b=best[f];if((e.lv||1)>(b.lv||1)){b.lv=e.lv;}continue;}best[f]=e;}
     keep.push(e);}
   o.ents=keep;if(o.gems===undefined)o.gems=25;o.migrated=true;return o;}
+// Liman = seviye 8+ Balıkçı, Havalimanı = seviye 10+ Hava Ulaşımı (evrimli binalarda)
+const isHarbor=e=>e.type==='harbor'||(e.type==='balikci'&&lv(e)>=8);
+const isAirport=e=>e.type==='airport'||(e.type==='helipad'&&lv(e)>=10);
+function unlockTransport(){if(S.ship&&S.ship.state==='locked'&&S.ents.some(isHarbor)){S.ship={state:'here',crates:genCrates(4),back:0};if(!DEMO)toast('Kargo gemisi limana yanaştı! Balıkçı’ya dokun.');}
+  if(S.plane&&S.plane.state==='locked'&&S.ents.some(isAirport)){S.plane={state:'here',crates:genCrates(6),back:0};if(!DEMO)toast('Kargo uçağı hazır! Hava Ulaşımı’na dokun.');}}
 function townEra(){const fs=S.ents.filter(e=>DEF[e.type]&&DEF[e.type].looks&&e.type!=='hall');if(!fs.length)return 1;const a=fs.reduce((s,e)=>s+lv(e),0)/fs.length;return a>=12?4:a>=8?3:a>=4.5?2:1;}
-function changed(){if(!DEMO){const te=townEra();if(te>S.era){S.era=te;spawnVillagers();spawnVeh();setTimeout(()=>talk('p_baskan',`${S.townName||'Köyümüz'} büyüdü! Artık bir ${ERA_NAME[te].toLocaleLowerCase('tr')} olduk.`,[['Yaşasın!',null]]),400);}}if(sheetCtx)refreshSheet();hud();saveSoon();}
+function changed(){if(!DEMO){unlockTransport();const te=townEra();if(te>S.era){S.era=te;spawnVillagers();spawnVeh();setTimeout(()=>talk('p_baskan',`${S.townName||'Köyümüz'} büyüdü! Artık bir ${ERA_NAME[te].toLocaleLowerCase('tr')} olduk.`,[['Yaşasın!',null]]),400);}}if(sheetCtx)refreshSheet();hud();saveSoon();}
 setInterval(()=>{save();hud();},4000);setInterval(()=>{const m=gameMin(),h=m/60;$('clock').textContent=(curEvent()?'🎉 ':'')+(h>=6.5&&h<19.5?'☀️ ':'🌙 ')+hhmm(m);if(m===360&&!DEMO)sfx.rooster();},1000);
 $('clockPill').onclick=()=>{const m=gameMin(),ez=VAKIT.find(([n,s])=>s>m)||VAKIT[0],ev=curEvent();toast((ev?ev.n+' · ':'')+SEASON_NAME[season()]+' · Saat '+hhmm(m)+' · Sıradaki ezan: '+ez[0]+' '+hhmm(ez[1]));};
 $('sndPill').onclick=openSound;if($('gemPill'))$('gemPill').onclick=()=>openStore();setTimeout(soundPill,0);document.addEventListener('visibilitychange',save);
@@ -1860,7 +1876,7 @@ const STORY=[
  {ch:7,who:'p_firinci',title:'Fener şenliği',intro:'Fener yanınca büyük bir şenlik yapacağız! Pasta ve tereyağlı ekmek hazırlayalım.',goals:[{t:'made',k:'cake',n:3},{t:'made',k:'butter',n:3}],reward:{coins:500,xp:45}},
  {ch:7,who:'p_zeynep',title:'Ufuk Feneri',intro:'Mercek elimizde, kule sağlam. Son bir gayret: fenerin lambasını yakalım!',goals:[{t:'give',k:'cake',n:2},{t:'give',k:'fabric',n:2},{t:'coins',n:1500}],reward:{coins:0,xp:80},fx:'light',
    outro:'FENER YANDI! Otuz yıllık sis dağılıyor… Ufukta gemiler var! Ada artık sadece bir köy değil. Liman, postane, okul… Kasabaya dönüşme zamanı.'},
- {ch:8,who:'p_balikci',title:'Liman',intro:'Fener yandı, sis kalktı! Ama gemilerin yanaşacağı bir liman yok. Seviye 9’a ulaş ve liman kur; balıkçı tekneleri de denize açılsın.',goals:[{t:'level',n:9},{t:'build',k:'harbor',n:1},{t:'made',k:'fish',n:4}],reward:{coins:800,xp:50},outro:'Limanda yeniden martı sesleri! Bak, iskeleye bir gemi yanaşıyor… kara bayraklı.'},
+ {ch:8,who:'p_balikci',title:'Liman',intro:'Fener yandı, sis kalktı! Ama gemilerin yanaşacağı bir liman yok. Seviye 9’a ulaş ve Balıkçı’yı seviye 8’e yükselt; orası limana dönüşsün, kargo gemisi de yanaşsın.',goals:[{t:'level',n:9},{t:'build',k:'harbor',n:1},{t:'made',k:'fish',n:4}],reward:{coins:800,xp:50},outro:'Limanda yeniden martı sesleri! Bak, iskeleye bir gemi yanaşıyor… kara bayraklı.'},
  {ch:8,who:'p_karakulak',title:'Kara Ada’dan gelen',intro:'Hah! Demek feneri yaktınız. Ben Kaptan Karakulak, Kara Ada’nın sahibi. Bu sulardaki bütün ticaret benimdir. Gemilerinizi göndermeden önce bana sorarsınız!',goals:[{t:'ships',n:1}],reward:{coins:600,xp:40},outro:'Bana sormadan gemi mi gönderdiniz? Göreceğiz bakalım bu cesaret ne kadar sürer…'},
  {ch:8,who:'p_balikci',title:'Karakulak kim?',intro:'Karakulak… Fırtına gecesi onun gemisi de o sulardaydı. O günden beri zenginleşti, bütün adaları avucuna aldı. Ondan bağımsız kalmak için kasabayı büyütelim: iki kasaba evi kur.',goals:[{t:'build',k:'townhouse',n:2}],reward:{coins:700,xp:40}},
  {ch:9,who:'p_nine',title:'Elma bahçeleri',intro:'Gençliğimde bu yamaçlar elma bahçesiydi. Meyve bahçesi kur, elma topla; çocuklar ağaç gölgesinde oynasın.',goals:[{t:'build',k:'orchard',n:2},{t:'made',k:'apple',n:6}],reward:{coins:600,xp:40}},
@@ -2521,7 +2537,7 @@ function askTownName(after,rename){const box=$('nameBox'),inp=$('townIn');$('nam
     S.townName=v;save();box.classList.remove('on');hud();if(after)after();};
   inp.onkeydown=ev=>{if(ev.key==='Enter')$('townOk').click();};
   box.classList.add('on');setTimeout(()=>inp.focus(),300);}
-setTimeout(()=>{if(!DEMO&&S.xp>=xpNeed(S.lvl))gainXP(0);},2500);
+setTimeout(()=>{if(!DEMO){unlockTransport();if(S.xp>=xpNeed(S.lvl))gainXP(0);}},2500);
 setTimeout(()=>{if(DEMO)return;const go0=()=>{if(S.quest.i===0&&!S.quest.seen){S.quest.seen=true;showQuestTalk();}};const go=()=>checkDaily(()=>{go0();eventNotice();});if(!S.townName)askTownName(go);else go();},700);
 requestAnimationFrame(draw);
 window.__S=()=>S;
