@@ -608,7 +608,9 @@ function load(){
   if(!S.quest.base)startQuest(false);
 }
 let DEMO=false,REAL=null;
-function save(){if(DEMO)return;try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function save(){if(DEMO)return;clearTimeout(save.t);try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function saveSoon(){clearTimeout(save.t);save.t=setTimeout(save,400);}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save();});addEventListener('pagehide',()=>save());
 
 /* ================= HELPERS ================= */
 const $=id=>document.getElementById(id);
@@ -1672,7 +1674,7 @@ function migrateV3(o){if(!o||!o.ents)return o;const keep=[],best={};
     keep.push(e);}
   o.ents=keep;if(o.gems===undefined)o.gems=25;o.migrated=true;return o;}
 function townEra(){const fs=S.ents.filter(e=>DEF[e.type]&&DEF[e.type].looks&&e.type!=='hall');if(!fs.length)return 1;const a=fs.reduce((s,e)=>s+lv(e),0)/fs.length;return a>=12?4:a>=8?3:a>=4.5?2:1;}
-function changed(){if(!DEMO){const te=townEra();if(te>S.era){S.era=te;spawnVillagers();spawnVeh();setTimeout(()=>talk('p_baskan',`${S.townName||'Köyümüz'} büyüdü! Artık bir ${ERA_NAME[te].toLocaleLowerCase('tr')} olduk.`,[['Yaşasın!',null]]),400);}}hud();save();}
+function changed(){if(!DEMO){const te=townEra();if(te>S.era){S.era=te;spawnVillagers();spawnVeh();setTimeout(()=>talk('p_baskan',`${S.townName||'Köyümüz'} büyüdü! Artık bir ${ERA_NAME[te].toLocaleLowerCase('tr')} olduk.`,[['Yaşasın!',null]]),400);}}if(sheetCtx)refreshSheet();hud();saveSoon();}
 setInterval(()=>{save();hud();},4000);setInterval(()=>{const m=gameMin(),h=m/60;$('clock').textContent=(curEvent()?'🎉 ':'')+(h>=6.5&&h<19.5?'☀️ ':'🌙 ')+hhmm(m);if(m===360&&!DEMO)sfx.rooster();},1000);
 $('clockPill').onclick=()=>{const m=gameMin(),ez=VAKIT.find(([n,s])=>s>m)||VAKIT[0],ev=curEvent();toast((ev?ev.n+' · ':'')+SEASON_NAME[season()]+' · Saat '+hhmm(m)+' · Sıradaki ezan: '+ez[0]+' '+hhmm(ez[1]));};
 $('sndPill').onclick=openSound;if($('gemPill'))$('gemPill').onclick=()=>openStore();setTimeout(soundPill,0);document.addEventListener('visibilitychange',save);
@@ -2240,12 +2242,13 @@ function penKeeper(c,x,ground,gh,k){const s=gh/120,lean=k.dive?Math.max(-1,Math.
 function penTap(){if(!PEN.run||pen$('penEnd').classList.contains('on'))return;const t=performance.now();
   if(PEN.phase==='aim'){PEN.phase='power';PEN.t0=t;PEN.msg='Güç: yeşil-sarı arası en iyisi, kırmızı dışarı uçar';penHud();sfx.blip();return;}
   if(PEN.phase==='power'){PEN.phase='fly';const{gx,gy,gw,gh}=penGoal();const aim=PEN.aim,pow=PEN.pow;
-    const tx=PEN.W/2+aim*gw*.62,height=Math.min(1.25,.15+pow*1.05),ty=gy+gh-height*gh;
-    PEN.ball={t0:t,dur:520-pow*220,tx,ty,loft:.4+pow*.5,aim,height};
-    const k=PEN.keeper,skill=.3+PEN.shot*.07+(S.lvl>20?.05:0);const guess=Math.random()<skill?aim:(Math.random()*2-1);k.dive=Math.max(-.95,Math.min(.95,guess*1.15));k.jump=Math.min(1,height*1.1);
+    const bxh=aim*1.24,tx=PEN.W/2+bxh*gw/2,height=Math.min(1.25,.15+pow*1.05),ty=gy+gh-height*gh;
+    PEN.ball={t0:t,dur:520-pow*220,tx,ty,loft:.4+pow*.5,aim,bxh,height};
+    const k=PEN.keeper,skill=.3+PEN.shot*.07+(S.lvl>20?.05:0);const guess=Math.random()<skill?bxh+(Math.random()-.5)*.25:(Math.random()*2-1);k.dive=Math.max(-.9,Math.min(.9,guess));k.jump=Math.min(1,height*1.1);
     if(SND.ctx){tone('sine',140,60,.15,.4);noise(.05,.15,null,800);}PEN.msg='';penHud();}}
-function penResult(){const b=PEN.ball,k=PEN.keeper,{gx,gw}=penGoal();const inX=Math.abs(b.aim*.62)<.98,inY=b.height<=1.0;
-  const kx=k.dive,reach=.34-PEN.shot*.01,saved=inX&&inY&&Math.abs(kx-b.aim*.62*1.0)<reach&&!(b.height>.82&&Math.abs(b.aim)>.6);
+function penResult(){const b=PEN.ball,k=PEN.keeper;const inX=Math.abs(b.bxh)<.97,inY=b.height<=1.0;
+  // kalecinin çizildiği yer ile topun gerçekten çakışmasına bakılır (yarım kale genişliği biriminde)
+  const kx=k.x,reach=.26+.1*Math.min(1,b.height),saved=inX&&inY&&Math.abs(kx-b.bxh)<reach&&!(b.height>.85&&Math.abs(b.bxh)>.7);
   let goal=inX&&inY&&!saved;PEN.res.push(goal);const t=performance.now();
   if(goal){PEN.netHit=t;PEN.flash=t;PEN.banner={txt:'GOOOL!',good:true,t0:t};if(SND.ctx){noise(.9,.18,null,500);[0,4,7].forEach((n,i)=>pluck(HICAZ[n]*2,SND.ctx.currentTime+i*.1,.25,SND.fx));}}
   else{PEN.banner={txt:saved?'Kurtardı!':(inY?'Direk dışı!':'Auttt!'),good:false,t0:t};if(SND.ctx)tone('triangle',300,150,.4,.15);}
