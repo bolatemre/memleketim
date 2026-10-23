@@ -77,14 +77,28 @@ echo "::endgroup::"
 
 AUTH=(-authenticationKeyPath "$KEYFILE" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
 
-echo "::group::Arşivle"
+echo "::group::Projeye imza ayarları (sadece uygulama hedefine)"
 cd ios/App
+# İmza ayarı komut satırından verilince Capacitor paketlerine de uygulanıyor ve bozuyordu;
+# bu yüzden ayarları doğrudan projedeki "App" hedefine yazıyoruz.
+gem list -i xcodeproj >/dev/null 2>&1 || gem install xcodeproj --user-install --no-document
+TEAM_ID="$TEAM_ID" BUNDLE_ID="$BUNDLE_ID" PROFILE_NAME="$PROFILE_NAME" ruby -e '
+  begin; require "xcodeproj"; rescue LoadError; Gem.paths=nil; require "xcodeproj"; end
+  p=Xcodeproj::Project.open("App.xcodeproj")
+  t=p.targets.find{|x| x.name=="App"} or abort("App hedefi yok")
+  t.build_configurations.each do |c|
+    s=c.build_settings
+    s["CODE_SIGN_STYLE"]="Manual"; s["DEVELOPMENT_TEAM"]=ENV["TEAM_ID"]
+    s["CODE_SIGN_IDENTITY"]="Apple Distribution"; s["CODE_SIGN_IDENTITY[sdk=iphoneos*]"]="Apple Distribution"
+    s["PROVISIONING_PROFILE_SPECIFIER"]=ENV["PROFILE_NAME"]; s["PRODUCT_BUNDLE_IDENTIFIER"]=ENV["BUNDLE_ID"]
+  end
+  p.save; puts "İmza ayarları yazıldı"'
+echo "::endgroup::"
+
+echo "::group::Arşivle"
 xcodebuild -project App.xcodeproj -scheme App -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath "$TMP/App.xcarchive" archive \
-  DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Manual \
-  CODE_SIGN_IDENTITY="Apple Distribution" "CODE_SIGN_IDENTITY[sdk=iphoneos*]=Apple Distribution" \
-  PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
   OTHER_CODE_SIGN_FLAGS="--keychain $KC" \
   MARKETING_VERSION=1.0 CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 echo "::endgroup::"
