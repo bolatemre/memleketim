@@ -276,6 +276,7 @@ button,.btn,.btn-round,[role=button],[data-l],[data-buy]{touch-action:manipulati
 .pmsg{min-height:22px;margin:6px 0;font-weight:600;text-align:center}
 .pbox{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
 .pbox canvas{position:static;inset:auto;border-radius:18px;touch-action:none;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.pboost{display:flex;align-items:center;gap:12px;margin-top:8px}.pboost #penGems{font-weight:700}
 .pen .pres{font-size:30px;letter-spacing:4px;margin:6px 0}
 .pen .m3end .card{color:var(--ink)}
 .stat{display:flex;justify-content:space-between;background:var(--chip);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-weight:600}
@@ -337,6 +338,7 @@ button,.btn,.btn-round,[role=button],[data-l],[data-buy]{touch-action:manipulati
   <div class="top"><button class="x" id="penClose" aria-label="Kapat">✕</button><h2>⚽ Penaltı</h2><div class="dots" id="penDots"></div></div>
   <p class="pmsg" id="penMsg"></p>
   <div class="pbox"><canvas id="penCv"></canvas></div>
+  <div class="pboost"><span id="penGems"></span><button class="btn" id="penBig"></button></div>
   <div class="m3end" id="penEnd"><div class="card"><div id="penEndTxt"></div><div class="btns"><button class="btn alt" id="penBack">Stadyumdan çık</button><button class="btn" id="penAgain">Tekrar</button></div></div></div>
 </div>
 <div class="namebox" id="dailyBox" role="dialog" aria-modal="true"><div class="card"><h2 id="dailyTitle">Hoş geldin!</h2>
@@ -2175,8 +2177,8 @@ function openPenalty(){for(const k of['k_bg','k_ready','k_dive1','k_dive2','k_ju
   const free=S.pen.plays<3;
   if(!free&&(S.gems||0)<1){toast('Bugünkü 3 bedava maçın bitti; 1 elmasla oynayabilirsin');openStore();return;}
   if(!free&&!spendGems(1))return;S.pen.plays++;save();
-  Object.assign(PEN,{shot:0,res:[],phase:'aim',aim:0,pow:0,t0:performance.now(),ball:null,keeper:{x:0,dive:0,dir:0,y:0},msg:'Nişan al: ok ortadayken dokun',flash:0});
-  pen$('pen').classList.add('on');penResize();pen$('penEnd').classList.remove('on');penHud();
+  Object.assign(PEN,{big:false,saveShow:false,shot:0,res:[],phase:'aim',aim:0,pow:0,t0:performance.now(),ball:null,keeper:{x:0,dive:0,dir:0,y:0},msg:'Nişan al: ok ortadayken dokun',flash:0});
+  pen$('pen').classList.add('on');penResize();pen$('penEnd').classList.remove('on');penHud();penBoostUI();
   if(!PEN.run){PEN.run=true;requestAnimationFrame(penDraw);}
   if(SND.ctx)tone('sine',2600,2400,.5,.12);}
 function closePenalty(){pen$('pen').classList.remove('on');PEN.run=false;}
@@ -2187,7 +2189,9 @@ function penHud(){pen$('penDots').innerHTML=[0,1,2,3,4].map(i=>`<i class="${PEN.
 // kale geometrisi (ekran koordinatı)
 const PBG={w:768,h:1376,gx:130,gy:518,gw:510,gh:227,sx:384,sy:1190};
 function penFit(){const s=Math.max(PEN.W/PBG.w,PEN.H/PBG.h),ox=(PEN.W-PBG.w*s)/2,oy=(PEN.H-PBG.h*s)*.35;return {s,ox,oy};}
-const penGoal=()=>{if(!IM.k_bg){const W=PEN.W,H=PEN.H,gw=W*.78,gh=gw*.36;return {gx:(W-gw)/2,gy:H*.2,gw,gh,sx:W/2,sy:H*.82};}
+const PEN_BIG={x:1.35,y:1.25,cost:2};
+const penGoal=(base)=>{const g=penGoal0();if(base||!PEN.big)return g;const ground=g.gy+g.gh,cx=g.gx+g.gw/2,gw=g.gw*PEN_BIG.x,gh=g.gh*PEN_BIG.y;return {...g,gx:cx-gw/2,gy:ground-gh,gw,gh};};
+const penGoal0=()=>{if(!IM.k_bg){const W=PEN.W,H=PEN.H,gw=W*.78,gh=gw*.36;return {gx:(W-gw)/2,gy:H*.2,gw,gh,sx:W/2,sy:H*.82};}
   const{s,ox,oy}=penFit();return {gx:ox+PBG.gx*s,gy:oy+PBG.gy*s,gw:PBG.gw*s,gh:PBG.gh*s,sx:ox+PBG.sx*s,sy:oy+PBG.sy*s};};
 function penDraw(t){if(!PEN.run)return;const cv=pen$('penCv'),c=cv.getContext('2d'),W=PEN.W,H=PEN.H;c.setTransform(PEN.dpr,0,0,PEN.dpr,0,0);
   if(IM.k_bg&&IM.k_ready)return penDraw2(t,c,W,H);
@@ -2231,7 +2235,9 @@ function penDraw(t){if(!PEN.run)return;const cv=pen$('penCv'),c=cv.getContext('2
     c.font=`800 ${Math.round(W*.13)}px Fredoka,"Trebuchet MS",sans-serif`;c.textAlign='center';c.textBaseline='middle';c.lineWidth=10;c.strokeStyle=PEN.banner.good?'#1d5e12':'#6a1010';c.strokeText(PEN.banner.txt,0,0);c.fillStyle=PEN.banner.good?'#ffd23a':'#fff';c.fillText(PEN.banner.txt,0,0);c.restore();}
   requestAnimationFrame(penDraw);}
 function penDraw2(t,c,W,H){const{s,ox,oy}=penFit();c.drawImage(IM.k_bg,ox,oy,PBG.w*s,PBG.h*s);
-  const{gx,gy,gw,gh,sx,sy}=penGoal(),ground=gy+gh,gcx=gx+gw/2,kh=gh*1.0;
+  const{gx,gy,gw,gh,sx,sy}=penGoal(),ground=gy+gh,gcx=gx+gw/2,B=penGoal(true),kh=B.gh*1.0;
+  if(PEN.big){const src={x:100,y:494,w:570,h:262},bx0=B.gx-(PBG.gx-src.x)*s,bw=src.w*s,bh=src.h*s,nw=bw*PEN_BIG.x,nh=bh*PEN_BIG.y,gb=oy+(src.y+src.h)*s;
+    c.save();c.shadowColor='rgba(255,215,60,.9)';c.shadowBlur=18;c.drawImage(IM.k_bg,src.x,src.y,src.w,src.h,gcx-nw/2,gb-nh,nw,nh);c.restore();}
   if(PEN.flash&&t-PEN.flash<900){c.fillStyle=`rgba(255,240,150,${.25*(1-(t-PEN.flash)/900)})`;c.fillRect(0,0,W,gy+gh);}
   if(PEN.netHit&&t-PEN.netHit<450){const d=(t-PEN.netHit)/450;c.strokeStyle=`rgba(255,255,255,${.7*(1-d)})`;c.lineWidth=3;c.beginPath();c.ellipse(PEN.ball.tx,PEN.ball.ty,gw*.08*(1+d),gh*.12*(1+d),0,0,7);c.stroke();}
   // kaleci
@@ -2241,8 +2247,8 @@ function penDraw2(t,c,W,H){const{s,ox,oy}=penFit();c.drawImage(IM.k_bg,ox,oy,PBG
     if(PEN.saveShow){img=IM.k_hold;}
     else if(Math.abs(k.dive)<.22){img=IM.k_jump;}
     else{img=(PEN.ball.height<.4?IM.k_dive2:IM.k_dive1)||IM.k_ready;flip=k.dive<0;}}
-  const cxk=gcx+k.x*gw/2;
-  if(img===IM.k_dive1||img===IM.k_dive2){dw=kh*1.4;dh=img.height*dw/img.width;cx=Math.max(gx+dw*.35,Math.min(gx+gw-dw*.35,cxk));by=Math.max(gy+dh*.95,ground-k.y*gh*.5);
+  const cxk=gcx+k.x*B.gw/2;
+  if(img===IM.k_dive1||img===IM.k_dive2){dw=kh*1.4;dh=img.height*dw/img.width;cx=Math.max(gx+dw*.35,Math.min(gx+gw-dw*.35,cxk));by=Math.max(gy+dh*.95,ground-k.y*B.gh*.5);
     const top=by-dh;PEN.kRect={x:cx-dw/2,y:top,w:dw,h:dh,shrinkX:.08,shrinkY:.1};}
   else{dh=img===IM.k_jump?kh*1.25:kh;dw=img.width*dh/img.height;cx=cxk;by=ground-(img===IM.k_jump?k.y*gh*.3:0);PEN.kRect={x:cx-dw/2,y:by-dh,w:dw,h:dh,shrinkX:.12,shrinkY:.02};}
   c.fillStyle='rgba(0,0,0,.22)';c.beginPath();c.ellipse(cxk,ground+2,dw*.35,gh*.04,0,0,7);c.fill();
@@ -2251,8 +2257,8 @@ function penDraw2(t,c,W,H){const{s,ox,oy}=penFit();c.drawImage(IM.k_bg,ox,oy,PBG
   let bx=sx,byb=sy,br=W*.05;
   if(PEN.ball){const b=PEN.ball,d=Math.min(1,(t-b.t0)/b.dur),e=1-Math.pow(1-d,2);bx=sx+(b.tx-sx)*e;byb=sy+(b.ty-sy)*e-Math.sin(d*Math.PI)*H*.05*b.loft;br=W*.05*(1-.62*e);
     if(d>=1&&!b.done){b.done=true;penResult();}}
-  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(bx,PEN.ball?byb+br*1.3:sy+br*.8,br*.9,br*.3,0,0,7);c.fill();
-  if(IM.k_ball){c.save();c.translate(bx,byb);c.rotate(PEN.ball?(t-PEN.ball.t0)/90:0);c.drawImage(IM.k_ball,-br,-br,br*2,br*2);c.restore();}else penBall(c,bx,byb,br,t);
+  if(!PEN.saveShow){c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(bx,PEN.ball?byb+br*1.3:sy+br*.8,br*.9,br*.3,0,0,7);c.fill();}
+  if(PEN.saveShow){}else if(IM.k_ball){c.save();c.translate(bx,byb);c.rotate(PEN.ball?(t-PEN.ball.t0)/90:0);c.drawImage(IM.k_ball,-br,-br,br*2,br*2);c.restore();}else penBall(c,bx,byb,br,t);
   penOverlay(t,c,W,H,sx,sy);requestAnimationFrame(penDraw);}
 function penOverlay(t,c,W,H,sx,sy){
   if(PEN.phase==='aim'){PEN.aim=Math.sin((t-PEN.t0)*(.0026+PEN.shot*.0005));const ang=PEN.aim*.62;c.save();c.translate(sx,sy);c.rotate(ang);
@@ -2279,11 +2285,11 @@ function penKeeper(c,x,ground,gh,k){const s=gh/120,lean=k.dive?Math.max(-1,Math.
   c.fillStyle='#f1c39b';c.beginPath();c.arc(0,-94*s,13*s,0,7);c.fill();c.fillStyle='#3a2414';c.beginPath();c.arc(0,-99*s,13*s,Math.PI,0);c.fill();
   c.restore();}
 function penTap(){if(!PEN.run||pen$('penEnd').classList.contains('on'))return;const t=performance.now();
-  if(PEN.phase==='aim'){PEN.phase='power';PEN.t0=t;PEN.msg='Güç: yeşil-sarı arası en iyisi, kırmızı dışarı uçar';penHud();sfx.blip();return;}
+  if(PEN.phase==='aim'){PEN.phase='power';PEN.t0=t;setTimeout(penBoostUI,0);PEN.msg='Güç: yeşil-sarı arası en iyisi, kırmızı dışarı uçar';penHud();sfx.blip();return;}
   if(PEN.phase==='power'){PEN.phase='fly';const{gx,gy,gw,gh}=penGoal();const aim=PEN.aim,pow=PEN.pow;
     const bxh=aim*1.24,tx=gx+gw/2+bxh*gw/2,height=Math.min(1.25,.15+pow*1.05),ty=gy+gh-height*gh;
     PEN.ball={t0:t,dur:520-pow*220,tx,ty,loft:.4+pow*.5,aim,bxh,height};
-    PEN.saveShow=false;const k=PEN.keeper,skill=.3+PEN.shot*.07+(S.lvl>20?.05:0);const guess=Math.random()<skill?bxh+(Math.random()-.5)*.25:(Math.random()*2-1);k.dive=Math.max(-.9,Math.min(.9,guess));k.jump=Math.min(1,height*1.1);
+    PEN.saveShow=false;const k=PEN.keeper,skill=.3+PEN.shot*.07+(S.lvl>20?.05:0);const sc=PEN.big?PEN_BIG.x:1,guess=Math.random()<skill?bxh*sc+(Math.random()-.5)*.25:(Math.random()*2-1);k.dive=Math.max(-.9,Math.min(.9,guess));k.jump=Math.min(1,height*1.1);
     if(SND.ctx){tone('sine',140,60,.15,.4);noise(.05,.15,null,800);}PEN.msg='';penHud();}}
 function penResult(){const b=PEN.ball,k=PEN.keeper;const inX=Math.abs(b.bxh)<.97,inY=b.height<=1.0;
   // kalecinin çizildiği yer ile topun gerçekten çakışmasına bakılır (yarım kale genişliği biriminde)
@@ -2295,12 +2301,14 @@ function penResult(){const b=PEN.ball,k=PEN.keeper;const inX=Math.abs(b.bxh)<.97
   if(goal){PEN.netHit=t;PEN.flash=t;PEN.banner={txt:'GOOOL!',good:true,t0:t};if(SND.ctx){noise(.9,.18,null,500);[0,4,7].forEach((n,i)=>pluck(HICAZ[n]*2,SND.ctx.currentTime+i*.1,.25,SND.fx));}}
   else{PEN.banner={txt:saved?'Kurtardı!':(inY?'Direk dışı!':'Auttt!'),good:false,t0:t};if(SND.ctx)tone('triangle',300,150,.4,.15);}
   penHud();PEN.shot++;
-  setTimeout(()=>{if(!PEN.run)return;if(PEN.shot>=5)return penEnd();PEN.ball=null;PEN.keeper={x:0,dive:0,y:0};PEN.phase='aim';PEN.t0=performance.now();PEN.msg=`Atış ${PEN.shot+1}/5 · Kaleci gittikçe ısınıyor`;penHud();},1500);}
+  setTimeout(()=>{if(!PEN.run)return;if(PEN.shot>=5)return penEnd();PEN.ball=null;PEN.big=false;PEN.saveShow=false;penBoostUI();PEN.keeper={x:0,dive:0,y:0};PEN.phase='aim';PEN.t0=performance.now();PEN.msg=`Atış ${PEN.shot+1}/5 · Kaleci gittikçe ısınıyor`;penHud();},1500);}
 function penEnd(){const g=PEN.res.filter(Boolean).length,win=g>=3;let coins=0,gems=0;
   if(win){coins=20+S.lvl*6+g*10;if(g===5)gems=1;S.coins+=coins;S.gems=(S.gems||0)+gems;gainXP(4+g);changed();sfx.fanfare();}
   pen$('penEndTxt').innerHTML=`<h2>${g===5?'Kusursuz!':win?'Kazandın!':'Kaleci kazandı'}</h2><div class="pres">${PEN.res.map(r=>r?'⚽':'❌').join(' ')}</div><p class="sub2">${g} / 5 gol</p>${win?`<p>${COIN} +${coins}${gems?` · ${GEM} +${gems}`:''}</p>`:'<p>En az 3 gol atarsan ödül kazanırsın.</p>'}`;
   const free=S.pen.plays<3;pen$('penAgain').innerHTML=free?'Tekrar (bedava)':`Tekrar · 1 ${GEM}`;pen$('penEnd').classList.add('on');}
-function penBind(){pen$('penCv').addEventListener('pointerdown',ev=>{ev.preventDefault();penTap();});pen$('penClose').onclick=closePenalty;pen$('penAgain').onclick=()=>openPenalty();pen$('penBack').onclick=closePenalty;}
+function penBoostUI(){const b=pen$('penBig');if(!b)return;b.disabled=PEN.big||PEN.phase!=='aim';b.innerHTML=PEN.big?'🥅 Kale büyüdü!':`🥅 Kaleyi büyüt · ${PEN_BIG.cost} ${GEM}`;pen$('penGems').innerHTML=`${GEM} ${S.gems||0}`;}
+function penBig(){if(PEN.big||PEN.phase!=='aim')return;if(!spendGems(PEN_BIG.cost))return;PEN.big=true;PEN.msg='Kale bu atış için büyüdü!';penHud();penBoostUI();sfx.fanfare();}
+function penBind(){pen$('penBig').onclick=penBig;pen$('penCv').addEventListener('pointerdown',ev=>{ev.preventDefault();penTap();});pen$('penClose').onclick=closePenalty;pen$('penAgain').onclick=()=>openPenalty();pen$('penBack').onclick=closePenalty;}
 
 /* ================= START ================= */
 $('hudCoin').src=IMG_SRC.i_coin;$('hudStar').src=IMG_SRC.u_star;$('popImg').src=IMG_SRC.w_farmer;
