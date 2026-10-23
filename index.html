@@ -537,7 +537,8 @@ DEF.cottage.coins=12;
 const MAXL=15;
 const lookIdx=e=>{const d=DEF[e.type];return d&&d.looks?Math.min(d.looks.length-1,Math.floor((lv(e)-1)*d.looks.length/MAXL)):0;};
 function imgOf(e){if(e.type==='deco'||e.type==='obstacle')return e.img;if(e.type==='ruin')return LM[e.lm].img;const d=DEF[e.type];
-  if(d.looks){for(let i=lookIdx(e);i>=0;i--)if(IMG_SRC[d.looks[i]])return d.looks[i];}return d.img;}
+  if(d.looks){const w=lookIdx(e);let fb=null;for(let i=w;i>=0;i--){const k=d.looks[i];if(!IMG_SRC[k])continue;if(IM[k])return k;loadImg(k);if(!fb)fb=k;}
+    for(let i=w+1;i<d.looks.length;i++){const k=d.looks[i];if(IM[k])return k;}return fb||d.img;}return d.img;}
 const OLDMAP={house2:['cottage',4],townhouse:['cottage',6],apart1:['cottage',8],apartment:['cottage',10],skyscraper:['cottage',12],ecotower:['cottage',14],
  pizzeria:['bakery',9],kahvehane:['cayocagi',6],cafe:['cayocagi',11],creamery:['dairy',8],furniture:['smith',5],electronics:['smith',9],robotfac:['smith',13],
  tailor:['weaving',8],kasap:['kebapci',1],harbor:['balikci',8],juicefactory:['jamfactory',8],rowshop:['post',1],cami2:['cami1',5],cami3:['cami1',9],cami4:['cami1',13],
@@ -842,8 +843,10 @@ function drawPet(p,t){const r=petRect(p);if(!r)return;const hop=p.moving?-Math.a
   if(p.love&&t-p.love<1400){const d=(t-p.love)/1400;ctx.globalAlpha=1-d;ctx.font='18px "Apple Color Emoji","Segoe UI Emoji",sans-serif';ctx.textAlign='center';ctx.fillText('❤️',r.x+r.w/2,r.y-6-d*30);ctx.globalAlpha=1;}}
 
 /* ================= IMAGES ================= */
-const IM={},MASK={},GEO={};
-for(const[k,src]of Object.entries(IMG_SRC)){
+const IM={},MASK={},GEO={},LOADING={};
+// Bina evrim görselleri (yüzlercesi) sadece gerektiğinde açılır; hepsini birden açmak telefonu yavaşlatıyordu
+const LAZY=k=>k.startsWith('b_')||/^f[kst]_/.test(k)||['cottage','house2','townhouse','apart1','apartment','skyscraper','ecotower','dairy','bakery','barn'].includes(k);
+function loadImg(k){if(IM[k]||LOADING[k]||!IMG_SRC[k])return;LOADING[k]=1;const src=IMG_SRC[k];
   const im=new Image();im.onload=()=>{
     if(k[0]==='t'){IM[k]=im;return;}
     const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const x=c.getContext('2d');x.drawImage(im,0,0);
@@ -859,6 +862,7 @@ for(const[k,src]of Object.entries(IMG_SRC)){
     IM[k]=im;
   };im.src=src;
 }
+for(const k of Object.keys(IMG_SRC))if(!LAZY(k))loadImg(k);
 
 /* ================= GEOMETRY ================= */
 const iso=(gx,gy)=>({x:(gx-gy)*HW,y:(gx+gy)*HH});
@@ -1043,6 +1047,7 @@ function spawnVillagers(){
   setTimeout(spawnPets,0);VILL.length=0;const kinds=S.era>=2?['w_farmer','w_post','w_shopper','w_kid','w_builder','w_milkmaid','w_crate','w_smith']:['w_farmer','w_crate','w_milkmaid','w_smith','w_farmer','w_crate'];const n=Math.min(16,Math.max(6,Math.floor(popTotal()/3)));
   const rs=allRoads().filter(p=>cellUnlocked(p[0],p[1])&&[[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>isRoad(p[0]+a,p[1]+b))),cnt=DEMO?Math.min(18,8+S.era*3):n;
   for(let i=0;i<cnt;i++){const c=rs[Math.floor(rand(i*5+2)*rs.length)];const pref=S.era>=4?'ft':S.era>=3?'fs':S.era>=2?'fk':'f',fk0=FOLK_IMG[FOLK[i%FOLK.length].n],fk=fk0&&IMG_SRC[fk0.replace(/^f_/,pref+'_')]?fk0.replace(/^f_/,pref+'_'):fk0;
+    if(IMG_SRC[fk])loadImg(fk);
     VILL.push({type:'villager',k:IMG_SRC[fk]?fk:kinds[i%kinds.length],who:FOLK[i%FOLK.length],cx:c[0]+.5,cy:c[1]+.5,tx:c[0]+.5,ty:c[1]+.5,prev:null,wait:rand(i)*2000});}
 }
 let lastT=0;
@@ -1409,15 +1414,23 @@ function openSheet(title,render,head){
 // Kaydırılabilir listelerde parmak biraz kayınca iPhone tıklamayı iptal ediyordu: kısa dokunuşu kendimiz tıklamaya çeviriyoruz
 {let tp=null;
  document.addEventListener('pointerdown',ev=>{const b=ev.target.closest('button,[role=button]');tp=b&&!b.disabled?{b,x:ev.clientX,y:ev.clientY,t:performance.now()}:null;},true);
+ let lastTap=null;
  document.addEventListener('pointerup',ev=>{if(!tp)return;let{b,x,y,t}=tp;tp=null;
    if(!b.isConnected){const nb=document.elementFromPoint(ev.clientX,ev.clientY);const nb2=nb&&nb.closest('button,[role=button]');if(nb2&&nb2.textContent===b.textContent&&JSON.stringify(nb2.dataset)===JSON.stringify(b.dataset))b=nb2;else return;}
    if(b.disabled)return;
-   if(Math.hypot(ev.clientX-x,ev.clientY-y)<18&&performance.now()-t<800&&b.contains(document.elementFromPoint(ev.clientX,ev.clientY)||b)){b._tap=performance.now();b.click();}},true);
- document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('button,[role=button]');if(ev.isTrusted&&b&&b._tap&&performance.now()-b._tap<600){ev.stopImmediatePropagation();ev.preventDefault();}},true);}
+   if(Math.hypot(ev.clientX-x,ev.clientY-y)<18&&performance.now()-t<800&&b.contains(document.elementFromPoint(ev.clientX,ev.clientY)||b)){lastTap={t:performance.now(),x:ev.clientX,y:ev.clientY};b.click();}},true);
+ document.addEventListener('click',ev=>{if(ev.isTrusted&&lastTap&&performance.now()-lastTap.t<700&&Math.hypot(ev.clientX-lastTap.x,ev.clientY-lastTap.y)<40){ev.stopImmediatePropagation();ev.preventDefault();}},true);}
 // Parmak ekrandayken veya az önce dokunulmuşsa içerik yenilenmez; yoksa butonlar dokunma anında değişip tıklama kayboluyordu
 let touchT=0,touching=false;
 const sheetBusy=()=>touching||performance.now()-touchT<900;
-function refreshSheet(){const b=$('sBody'),st=b.scrollTop;sheetCtx();b.scrollTop=st;}
+// Yenilemede sadece değişen satırlar değiştirilir; resimli listeyi her 0,7 sn baştan çizmek telefonu yoruyordu
+function refreshSheet(){const real=$('sBody'),st=real.scrollTop,tmp=document.createElement('div');tmp.style.display='none';
+  real.parentNode.insertBefore(tmp,real);real.id='';tmp.id='sBody';
+  try{sheetCtx();}catch(e){console.warn(e);}finally{tmp.remove();tmp.id='';real.id='sBody';}
+  const a=[...real.childNodes],b=[...tmp.childNodes];
+  if(a.length!==b.length)real.replaceChildren(...b);
+  else for(let i=0;i<a.length;i++){const x=a[i],y=b[i];if(x.nodeType!==y.nodeType||(x.outerHTML??x.textContent)!==(y.outerHTML??y.textContent))real.replaceChild(y,x);}
+  real.scrollTop=st;}
 for(const id of['sheet','sBody']){const el=$(id);
   el.addEventListener('pointerdown',()=>{touching=true;touchT=performance.now();},true);
   el.addEventListener('scroll',()=>{touchT=performance.now();},true);}
