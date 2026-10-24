@@ -940,16 +940,16 @@ function bounds(){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;const pts=[];
 function rectOf(e){
   const d=DEF[e.type];
   if(e.type==='ruin'){const k=LM[e.lm].img,im=IM[k],g=GEO[k];if(!im||!g)return null;const s=2*CW/g.tw,b=iso(e.gx+2,e.gy+2);
-    return {x:b.x-g.ax*s,y:b.y-g.ay*s,w:im.width*s,h:im.height*s,im};}
+    return {x:b.x-g.ax*s,y:b.y-g.ay*s,w:im.width*s,h:im.height*s,im,ax:b.x};}
   if(e.type==='deco'||e.type==='obstacle'){const im=IM[e.img];if(!im)return null;const f=(e.type==='deco'?DECO:OBST)[e.img].w;
     const w=CW*f,h=im.height*w/im.width,b=iso(e.gx+.5,e.gy+.5);return {x:b.x-w/2,y:b.y+12-h,w,h,im};}
   const key=imgOf(e),im=IM[key];if(!im)return null;
   if(d.free){const w=CW*d.size*d.free.w*(d.size===1?1:.62),h=im.height*w/im.width,b=iso(e.gx+d.size/2,e.gy+d.size/2);
     return {x:b.x-w/2,y:b.y+HH*d.size*d.free.dy-h,w,h,im};}
   const g=GEO[key];if(!g)return null;const s=d.size*CW/g.tw,b=iso(e.gx+d.size,e.gy+d.size);
-  return {x:b.x-g.ax*s,y:b.y-g.ay*s,w:im.width*s,h:im.height*s,im};
+  return {x:b.x-g.ax*s,y:b.y-g.ay*s,w:im.width*s,h:im.height*s,im,ax:b.x};
 }
-function hitRect(r,wx,wy,key){
+function hitRect(r,wx,wy,key,flip){if(flip&&r&&r.ax!=null)wx=2*r.ax-wx;
   if(!r||wx<r.x||wy<r.y||wx>r.x+r.w||wy>r.y+r.h)return false;const m=MASK[key];if(!m)return true;
   const px=Math.floor((wx-r.x)/r.w*m.w),py=Math.floor((wy-r.y)/r.h*m.h);return m.a[py*m.w+px]>60;
 }
@@ -1003,7 +1003,7 @@ function drawField(e,t){
 }
 function star(x,y,r){ctx.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4,rr=i%2?r*.35:r;ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}ctx.fill();}
 function bounceK(e,t){if(!e.bounce)return 1;const d=(t-e.bounce)/320;if(d>1)return 1;return 1+Math.sin(d*Math.PI)*.06*(1-d);}
-function drawSprite(r,k,alpha,flip){ctx.save();ctx.globalAlpha=alpha||1;ctx.translate(r.x+r.w/2,r.y+r.h);ctx.scale((flip?-1:1)*(2-k),k);ctx.drawImage(r.im,-r.w/2,-r.h,r.w,r.h);ctx.restore();}
+function drawSprite(r,k,alpha,flip){ctx.save();ctx.globalAlpha=alpha||1;const cx=flip&&r.ax!=null?r.ax:r.x+r.w/2;ctx.translate(cx,r.y+r.h);ctx.scale((flip?-1:1)*(2-k),k);ctx.drawImage(r.im,r.x-cx,-r.h,r.w,r.h);ctx.restore();}
 function drawSmall(key,x,y,w,flip,bob){const im=IM[key];if(!im)return;const h=im.height*w/im.width;ctx.save();ctx.translate(x,y+(bob||0));if(flip)ctx.scale(-1,1);ctx.drawImage(im,-w/2,-h,w,h);ctx.restore();}
 function running(e,t){return e.q&&e.q.length&&t<e.q[e.q.length-1].end&&t>=e.q[0].start;}
 function curJob(e,t){if(!e.q)return null;return e.q.find(j=>t<j.end)||null;}
@@ -1195,7 +1195,7 @@ const MINARE={b_cami1:{x:.31,top:.17,base:.55},b_cami2:{x:.75,top:.19,base:.6},b
 let lastEzan=null;
 function ezanNow(m){for(const[n,s]of VAKIT){const d=m-s;if(d>=0&&d<36)return {n,d};}return null;}
 function drawEzan(t){
-  const m=gameMin(),ez=ezanNow(m);const minOf=e=>{const k=imgOf(e);if(MINARE[k])return MINARE[k];const g=GEO[k];return g&&g.tip?{x:g.tip.x,top:g.tip.y+.1,base:.55}:null;};
+  const m=gameMin(),ez=ezanNow(m);const minOf=e=>{const k=imgOf(e);let m=MINARE[k];if(!m){const g=GEO[k];m=g&&g.tip?{x:g.tip.x,top:g.tip.y+.1,base:.55}:null;}return m&&e.flip?{...m,x:1-m.x}:m;};
   const camis=S.ents.filter(e=>e.type==='cami1'&&minOf(e)&&cellUnlocked(e.gx,e.gy));
   if(!ez){lastEzan=null;return;}
   if(camis.length&&lastEzan!==ez.n){lastEzan=ez.n;toast('🕌 '+ez.n+' ezanı okunuyor');}
@@ -1314,7 +1314,7 @@ function draw(){
     const d=DEF[e.type];
     if(e.ghost){const ok=!occupied(e.gx,e.gy,d.size,place.move);diamond(e.gx,e.gy,d.size,d.size);ctx.fillStyle=ok?'rgba(120,255,120,.45)':'rgba(255,80,80,.5)';ctx.fill();
       if(d.kind==='road'){diamond(e.gx,e.gy,1,1);ctx.fillStyle=pat('t_dirt',260)||'#b9875a';ctx.fill();}
-      else if(d.kind==='field')drawField(e,t);else{const r=rectOf(e);if(r)drawSprite(r,1,.8);}continue;}
+      else if(d.kind==='field')drawField(e,t);else{const r=rectOf(e);if(r)drawSprite(r,1,.8,e.flip);}continue;}
     if(place&&place.move===e)continue;
     if(S.ents.includes(e)&&!cellUnlocked(e.gx,e.gy))continue;
     switch(d.kind){
@@ -1332,7 +1332,7 @@ function draw(){
           ctx.save();ctx.translate(r.x+r.w/2,r.y+r.h+hop);ctx.rotate(wave);ctx.scale(spin||.05,1);drawWalker(r.im,0,0,r.w,0,e.flip);ctx.restore();
           if(rc<2600){ctx.save();ctx.font='18px "Apple Color Emoji","Segoe UI Emoji",sans-serif';ctx.textAlign='center';ctx.translate(r.x+r.w*(e.flip?.1:.9),r.y+r.h*.18+hop);ctx.rotate(Math.sin(rc/90)*.5);ctx.fillText('👋',0,0);ctx.restore();}}}break;}
       case 'field':drawField(e,t);break;
-      default:{const r=rectOf(e);if(!r)break;drawSprite(r,bounceK(e,t));drawBuildingExtras(e,r,t);smoke(e,t);
+      default:{const r=rectOf(e);if(!r)break;drawSprite(r,bounceK(e,t),1,e.flip);drawBuildingExtras(e,r,t);smoke(e,t);
         if(lv(e)>1){const x=r.x+r.w*.18,y=r.y+r.h*.3;ctx.fillStyle='#ffcf3a';star(x,y,15);ctx.fillStyle='#7a4a00';ctx.font='700 13px Fredoka,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lv(e),x,y+1);}}
     }
   }
@@ -1379,7 +1379,7 @@ function hit(sx,sy){
     if(d.kind==='field'){const g=toGrid(w.x,w.y),g2=toGrid(w.x,w.y+20);
       if((g.gx>=e.gx&&g.gx<e.gx+1&&g.gy>=e.gy&&g.gy<e.gy+1)||(e.crop&&g2.gx>=e.gx&&g2.gx<e.gx+1&&g2.gy>=e.gy&&g2.gy<e.gy+1))return {e};continue;}
     if(!cellUnlocked(e.gx,e.gy))continue;
-    const r=rectOf(e);if(hitRect(r,w.x,w.y,imgOf(e)))return {e};
+    const r=rectOf(e);if(hitRect(r,w.x,w.y,imgOf(e),e.flip))return {e};
   }
   const g=toGrid(w.x,w.y),gx=Math.floor(g.gx),gy=Math.floor(g.gy);
   if(S.roads.some(p=>p[0]===gx&&p[1]===gy))return {road:[gx,gy]};
@@ -1498,7 +1498,8 @@ function sourceOf(k){if(CROPS[k])return `${ITEMS[k].n} tarlada yetişir.`;
 const needHTML=inp=>Object.entries(inp).map(([k,q])=>have(k)<q?`<span class="need miss" data-need="${k}" role="button">${ic(k)} ${ITEMS[k].n} ${have(k)}/${q}</span>`:`<span class="need">${ic(k)} ${have(k)}/${q}</span>`).join('')||'<span class="need">Malzeme gerekmez</span>';
 const moveBtn=e=>['Taşı',()=>{closeSheet();startMove(e);}];
 const upBtn=e=>UPK.includes(DEF[e.type].kind)&&lv(e)<maxLv(e)?['Yükselt',()=>openUpgrade(e)]:null;
-const heads=(e,...x)=>[moveBtn(e),upBtn(e),...x].filter(Boolean);
+const flipBtn=e=>['↔ Çevir',()=>{e.flip=!e.flip;e.bounce=now();sfx.blip();changed();}];
+const heads=(e,...x)=>[moveBtn(e),flipBtn(e),upBtn(e),...x].filter(Boolean);
 function upCost(e){const d=DEF[e.type],L=lv(e),base=d.price||800;
   if(!d.looks){const items=L===1?{nails:3}:L===2?{nails:6,plank:3}:L===3?{plank:6,steel:3}:{steel:6,gear:4};return {coins:Math.round(base*.6*L),items,lvl:(d.lvl||1)+2*L};}
   const n=L+1,band=Math.ceil(n/3),items=band===1?{nails:1+L}:band===2?{nails:2+L,plank:1+Math.floor(L/2)}:band===3?{plank:L,steel:Math.floor(L/2)}:band===4?{steel:L-3,gear:Math.floor(L/3)}:{gear:L-6,chip:Math.floor(L/4)};
@@ -1613,7 +1614,7 @@ function openDeco(e){
   openSheet('Süs',()=>{$('sBody').innerHTML=`<p class="sub">Üstteki <b>Taşı</b> ile istediğin yere götür ya da kaldır. Basılı tutup sürükleyerek de taşıyabilirsin.</p><div class="row"><div class="ico"><img class="ic" src="${IMG_SRC[e.img]}" alt=""></div>
     <div class="mid"><div class="t">Kaldır</div><div class="d">Yer açılır, 2 yıldız kazanırsın.</div></div>
     <button class="btn alt" id="rm" ${S.coins<10?'disabled':''}>10 ${COIN}</button></div>`;
-    $('rm').onclick=()=>{if(S.coins<10)return;S.coins-=10;gainXP(2);S.ents=S.ents.filter(x=>x!==e);closeSheet();changed();};},[moveBtn(e)]);
+    $('rm').onclick=()=>{if(S.coins<10)return;S.coins-=10;gainXP(2);S.ents=S.ents.filter(x=>x!==e);closeSheet();changed();};},[moveBtn(e),flipBtn(e)]);
 }
 function openObstacle(e){
   const o=OBST[e.img];
