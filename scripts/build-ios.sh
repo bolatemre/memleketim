@@ -91,6 +91,7 @@ TEAM_ID="$TEAM_ID" BUNDLE_ID="$BUNDLE_ID" PROFILE_NAME="$PROFILE_NAME" ruby -e '
     s["CODE_SIGN_STYLE"]="Manual"; s["DEVELOPMENT_TEAM"]=ENV["TEAM_ID"]
     s["CODE_SIGN_IDENTITY"]="Apple Distribution"; s["CODE_SIGN_IDENTITY[sdk=iphoneos*]"]="Apple Distribution"
     s["PROVISIONING_PROFILE_SPECIFIER"]=ENV["PROFILE_NAME"]; s["PRODUCT_BUNDLE_IDENTIFIER"]=ENV["BUNDLE_ID"]
+    s["TARGETED_DEVICE_FAMILY"]="1"  # sadece iPhone (iPad ekran görüntüsü gerekmez)
   end
   p.save; puts "İmza ayarları yazıldı"'
 echo "::endgroup::"
