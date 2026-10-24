@@ -282,6 +282,11 @@ button,.btn,.btn-round,[role=button],[data-l],[data-buy]{touch-action:manipulati
 .lsb{display:flex;align-items:center;justify-content:center;gap:16px;font-size:24px;font-weight:700;background:rgba(0,0,0,.35);border-radius:14px;padding:4px 10px;margin-bottom:6px}
 .lsb span{display:flex;align-items:center;gap:6px}.lsb img{width:32px;height:32px;object-fit:contain}.lsb b{font-size:15px;background:#fff;color:#14451d;border-radius:8px;padding:2px 8px}
 .lbox{flex:1;min-height:0;position:relative;border-radius:16px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.35)}.lbox canvas{position:absolute;inset:0;border-radius:0}
+.lsbw{display:flex;gap:6px;align-items:stretch;margin-bottom:4px}.lsbw .lsb{flex:1;margin:0}
+.lspd{border:none;border-radius:14px;background:rgba(0,0,0,.35);color:#fff;font-family:inherit;font-weight:700;font-size:14px;padding:0 10px}
+.lprog{height:4px;border-radius:2px;background:rgba(255,255,255,.15);margin-bottom:6px;overflow:hidden}.lprog i{display:block;height:100%;width:0;background:#ffd23a}
+.lgoals{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0}.lgoals span{background:var(--chip);border-radius:10px;padding:3px 8px;font-size:13px}.lgoals span.me{background:rgba(95,192,58,.25)}
+.lstat{width:100%;margin:8px 0;border-collapse:collapse;font-size:14px}.lstat td{width:22%;text-align:center;font-weight:700;font-size:16px}.lstat th{font-weight:600;color:var(--ink-soft)}.lstat tr+tr td,.lstat tr+tr th{border-top:1px solid rgba(0,0,0,.08)}
 .lcom{min-height:64px;background:rgba(0,0,0,.35);border-radius:12px;padding:6px 10px;margin-top:6px;font-size:14px}.lcom p{margin:2px 0}
 .lig .m3end .card{color:var(--ink)}
 .pen{position:fixed;inset:0;z-index:28;display:none;flex-direction:column;align-items:center;background:#16213e;color:#fff;padding:calc(env(safe-area-inset-top,0px) + 8px) 8px calc(env(safe-area-inset-bottom,0px) + 8px)}
@@ -354,7 +359,7 @@ button,.btn,.btn-round,[role=button],[data-l],[data-buy]{touch-action:manipulati
 <div class="lig" id="lig" role="dialog" aria-modal="true">
   <div class="top"><h2 id="ligTitle">🏆 Köyler Ligi</h2><button class="x" id="ligClose" aria-label="Kapat">✕</button></div>
   <div class="lhome" id="ligHome"></div>
-  <div class="lmatch" id="ligMatch"><div class="lsb" id="ligSB"></div><div class="lbox" id="ligBox"><canvas id="ligCv"></canvas></div><div class="lcom" id="ligCom"></div></div>
+  <div class="lmatch" id="ligMatch"><div class="lsbw"><div class="lsb" id="ligSB"></div><button class="lspd" id="ligSpd">⏩ 2x</button></div><div class="lprog"><i id="ligProg"></i></div><div class="lbox" id="ligBox"><canvas id="ligCv"></canvas></div><div class="lcom" id="ligCom"></div></div>
   <div class="m3end" id="ligEnd"><div class="card"><div id="ligEndTxt"></div><div class="btns"><button class="btn" id="ligBack2">Tabloya dön</button></div></div></div>
 </div>
 <div class="pen" id="pen" role="dialog" aria-modal="true">
@@ -742,7 +747,10 @@ const MELODY=[[4,2],[5,1],[4,1],[3,2],[2,1],[1,1],[2,2],[3,2],[4,4],[4,1],[5,1],
   [0,1],[1,1],[2,1],[3,1],[4,2],[7,2],[6,1],[5,1],[4,2],[5,1],[4,1],[3,1],[2,1],[3,2],[2,1],[1,1],[0,4]];
 function startMusic(){const c=SND.ctx;let next=c.currentTime+.4,i=0,beat=0;const step=.26;
   const drone=c.createOscillator(),dg=c.createGain();drone.type='sine';drone.frequency.value=146.83;dg.gain.value=.035;drone.connect(dg);dg.connect(SND.mus);drone.start();
-  setInterval(()=>{if(!SND.ctx)return;while(next<c.currentTime+.6){const[n,l]=MELODY[i%MELODY.length];
+  setInterval(()=>{if(!SND.ctx)return;
+    // uygulama uzun süre arka planda kaldıysa kaçırılan notaları çalmaya çalışma (binlerce nota telefonu donduruyordu)
+    if(next<c.currentTime-.05)next=c.currentTime+.1;
+    while(next<c.currentTime+.6){const[n,l]=MELODY[i%MELODY.length];
       pluck(HICAZ[n],next,.22,SND.mus);if(l>=2&&Math.random()<.5)pluck(HICAZ[n]/2,next+.01,.08,SND.mus);
       for(let k=0;k<l;k++){const tt=next+k*step,b=(beat+k)%8;if(b===0||b===5)tone('sine',95,55,.22,.16,tt,SND.mus);else if(b===2||b===6)noise(.06,.05,tt,2500,SND.mus);}
       next+=l*step;beat=(beat+l)%8;i++;}},200);}
@@ -1979,7 +1987,9 @@ function exitDemo(){
 document.querySelectorAll('#demo [data-era]').forEach(b=>b.onclick=()=>enterDemo(+b.dataset.era));
 $('demoExit').onclick=exitDemo;
 /* ================= ELMAS VE MAĞAZA (test modu) ================= */
-const TEST_STORE=true; // App Store ödemesi bağlanana kadar satın almalar ücretsiz test edilir
+// Mağaza uygulamasında (iOS/Android) sahte ödeme ve sahte reklam GÖSTERİLMEZ (mağaza kuralı). Web sürümünde test modu açık kalır.
+const IS_NATIVE=!!(window.Capacitor&&(window.Capacitor.isNativePlatform?window.Capacitor.isNativePlatform():window.Capacitor.platform&&window.Capacitor.platform!=='web'));
+const TEST_STORE=!IS_NATIVE;
 const GEM=`<i class="ic ic-i_gem" role="img" aria-label="elmas"></i>`;
 const skipCost=ms=>Math.max(1,Math.ceil(ms/120000));
 function spendGems(n){if((S.gems||0)<n){toast('Elmasın yetmiyor');openStore();return false;}S.gems-=n;changed();return true;}
@@ -1989,14 +1999,15 @@ const GOLDPACKS=[{g:10,c:1000},{g:50,c:6000},{g:100,c:15000}];
 function openStore(){openSheet('Mağaza',()=>{const today=dayKey(now()),ads=S.ads&&S.ads.day===today?S.ads.n:0;
   let h=TEST_STORE?`<div class="testbar">TEST MODU · Ödeme alınmaz, sadece sen görürsün</div>`:'';
   h+=`<div class="stat"><span>Elmasın</span><span>${GEM} ${S.gems||0}</span></div>`;
-  if(!S.starter)h+=`<div class="row starter"><div class="ico"><img class="ic" src="${IMG_SRC.i_usta}" alt=""></div><div class="mid"><div class="t">Başlangıç Paketi · tek sefer</div><div class="d">${GEM} 150 · ${COIN} 2000 · 3 Usta Belgesi · 10 çivi</div></div><button class="btn" data-buy="starter">${STARTER.price}</button></div>`;
-  h+=`<div class="sec">Elmas</div>`+GEMPACKS.map(p=>`<div class="row"><div class="ico"><img class="ic" src="${IMG_SRC.i_gem}" alt=""></div><div class="mid"><div class="t">${p.g} elmas ${p.tag?`<small class="tag">${p.tag}</small>`:''}</div><div class="d">Hızlandırma, ekstra hamle, eksik malzeme</div></div><button class="btn" data-buy="${p.id}">${p.price}</button></div>`).join('');
-  h+=`<div class="row"><div class="ico">🎬</div><div class="mid"><div class="t">Reklam izle</div><div class="d">+3 elmas · bugün ${5-ads} hakkın kaldı</div></div><button class="btn alt" id="adBtn" ${ads>=5?'disabled':''}>İzle</button></div>`;
+  if(!TEST_STORE)h+=`<p class="sub">Elmas paketleri yakında. Şimdilik elmas; seviye atlayarak, bulmacada ve günlük ödüllerle kazanılıyor.</p>`;
+  if(TEST_STORE&&!S.starter)h+=`<div class="row starter"><div class="ico"><img class="ic" src="${IMG_SRC.i_usta}" alt=""></div><div class="mid"><div class="t">Başlangıç Paketi · tek sefer</div><div class="d">${GEM} 150 · ${COIN} 2000 · 3 Usta Belgesi · 10 çivi</div></div><button class="btn" data-buy="starter">${STARTER.price}</button></div>`;
+  if(TEST_STORE)h+=`<div class="sec">Elmas</div>`+GEMPACKS.map(p=>`<div class="row"><div class="ico"><img class="ic" src="${IMG_SRC.i_gem}" alt=""></div><div class="mid"><div class="t">${p.g} elmas ${p.tag?`<small class="tag">${p.tag}</small>`:''}</div><div class="d">Hızlandırma, ekstra hamle, eksik malzeme</div></div><button class="btn" data-buy="${p.id}">${p.price}</button></div>`).join('');
+  if(TEST_STORE)h+=`<div class="row"><div class="ico">🎬</div><div class="mid"><div class="t">Reklam izle</div><div class="d">+3 elmas · bugün ${5-ads} hakkın kaldı</div></div><button class="btn alt" id="adBtn" ${ads>=5?'disabled':''}>İzle</button></div>`;
   h+=`<div class="sec">Altın</div>`+GOLDPACKS.map((p,i)=>`<div class="row"><div class="ico">${COIN}</div><div class="mid"><div class="t">${p.c.toLocaleString('tr')} altın</div></div><button class="btn alt" data-gold="${i}" ${(S.gems||0)<p.g?'disabled':''}>${p.g} ${GEM}</button></div>`).join('');
-  h+=`<p class="sub">Elmas nereden gelir: her seviye atlayışta +2, bulmacada her 10 bölümde +3, 7. gün ödülünde +5, reklam izleyerek veya satın alarak.</p>`;
+  h+=`<p class="sub">Elmas nereden gelir: her seviye atlayışta +2, bulmacada her 10 bölümde +3, 7. gün ödülünde +5${TEST_STORE?', reklam izleyerek veya satın alarak':''}.</p>`;
   $('sBody').innerHTML=h;
   bind('[data-buy]',b=>buyPack(b.dataset.buy));bind('[data-gold]',b=>{const p=GOLDPACKS[+b.dataset.gold];if(!spendGems(p.g))return;S.coins+=p.c;sfx.coin();toast('+'+p.c+' altın');changed();sheetCtx();});
-  $('adBtn').onclick=()=>watchAd(()=>{const d=dayKey(now());S.ads=S.ads&&S.ads.day===d?S.ads:{day:d,n:0};S.ads.n++;S.gems=(S.gems||0)+3;sfx.coin();toast('+3 elmas');changed();openStore();});});}
+  if($('adBtn'))$('adBtn').onclick=()=>watchAd(()=>{const d=dayKey(now());S.ads=S.ads&&S.ads.day===d?S.ads:{day:d,n:0};S.ads.n++;S.gems=(S.gems||0)+3;sfx.coin();toast('+3 elmas');changed();openStore();});});}
 function buyPack(id){const p=id==='starter'?STARTER:GEMPACKS.find(x=>x.id===id);if(!p)return;
   if(!TEST_STORE){toast('Ödeme sistemi henüz bağlı değil');return;}
   S.gems=(S.gems||0)+p.g;if(p.coins)S.coins+=p.coins;for(const[k,q]of Object.entries(p.items||{}))addItem(k,q);if(id==='starter')S.starter=true;
@@ -2382,7 +2393,7 @@ function ligRecord(h,a,gh,ga){const T=S.lig.tab;for(const[i,f,ag]of[[h,gh,ga],[a
 function ligSimGoals(sa,sb){let g=0;const p=.9+(sa-sb)/60;for(let i=0;i<5;i++)if(Math.random()<p*.3)g++;return g;}
 function openLig(){ligInit();audioInit();for(const k of['lg_pitch','fp_g_run1','fp_g_run2','fp_g_kick','fp_g_cel','fp_b_run1','fp_b_run2','fp_b_kick','fp_b_cel','fp_g_gk','fp_b_gk','lg_trophy'])loadImg(k);
   lg$('lig').classList.add('on');ligTable();}
-function closeLig(){lg$('lig').classList.remove('on');LM_.run=false;hud();}
+function closeLig(){lg$('lig').classList.remove('on');LM_.run=false;ligCrowd(false);hud();}
 function ligOpp(){const m=S.lig.fx[S.lig.round].find(p=>p.includes(0));return m[0]===0?m[1]:m[0];}
 function ligTable(){LM_.run=false;lg$('ligMatch').style.display='none';lg$('ligHome').style.display='block';const L=S.lig;
   lg$('ligTitle').textContent=`🏆 Köyler Ligi · Sezon ${L.season}`;
@@ -2405,27 +2416,39 @@ const LM_={run:false};
 const FORM=[[.5,.95,'gk'],[.25,.78],[.75,.78],[.38,.6],[.62,.42]];
 const PF={x0:112,x1:660,y0:272,y1:1126};
 const fieldImg=(x,y)=>({x:PF.x0+(PF.x1-PF.x0)*x,y:PF.y0+(PF.y1-PF.y0)*y});
-function ligStart(){const o=ligOpp();Object.assign(LM_,{camX:384,run:true,opp:o,min:0,sc:[0,0],paused:false,ended:false,log:[],cel:0,lt:0,camY:fieldImg(.5,.5).y,
+function ligStart(){const o=ligOpp();Object.assign(LM_,{camX:384,run:true,opp:o,min:0,sc:[0,0],paused:false,ended:false,log:[],cel:0,lt:0,camY:fieldImg(.5,.5).y,spd:1,ht:false,simT:0,banner:null,conf:[],stats:{pos:[0,0],sh:[0,0],ps:[0,0],goals:[],cards:0},
   ball:{x:.5,y:.5,mode:'hold',holder:null,tx:0,ty:0,touch:0},nextAct:0});
   const types=['pen','fk','1v1','save','save','1v1','fk'].sort(()=>Math.random()-.5),n=4,mins=[...Array(n)].map((_,i)=>Math.round(12+i*20+Math.random()*12));
   LM_.moments=mins.map((m,i)=>({m,type:types[i],done:false}));if(!LM_.moments.some(m=>m.type==='save'))LM_.moments[1].type='save';
   LM_.pl=[];for(const side of[0,1])FORM.forEach((f,i)=>{const by=side?1-f[1]:f[1];LM_.pl.push({side,i,gk:!!f[2],bx:side?1-f[0]:f[0],by,x:f[0],y:by,flip:side===1,step:0,dist:0});});
   LM_.ball.holder=LM_.pl.find(p=>p.side===0&&p.i===4);
   lg$('ligHome').style.display='none';lg$('ligMatch').style.display='flex';ligResize();ligScore();ligSay(`Hakem düdüğü çaldı! ${lteam(0)} ile ${lteam(o)} karşı karşıya.`);
-  if(SND.ctx)tone('sine',2600,2400,.5,.12);LM_.lt=performance.now();requestAnimationFrame(ligDraw);}
+  ligWhistle(1);ligCrowd(true);lg$('ligSpd').textContent='⏩ 2x';LM_.lt=performance.now();requestAnimationFrame(ligDraw);}
+const RIVALS=['Ahmet','Mustafa','Hasan','Murat','Kemal'];
+const plName=p=>p.side===0?(OURS[p.i]||'Can'):RIVALS[p.i]||'Ali';
+function ligWhistle(n){if(!SND.ctx)return;const t=SND.ctx.currentTime;for(let i=0;i<n;i++){tone('sine',2700,2500,i===n-1&&n>1?.7:.28,.12,t+i*.38);tone('sine',3100,2900,i===n-1&&n>1?.7:.28,.05,t+i*.38);}}
+// tribün uğultusu: atak kaleye yaklaştıkça yükselir
+function ligCrowd(on){if(!SND.ctx)return;const c=SND.ctx;if(on&&!LM_.crowd){const b=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    const s=c.createBufferSource();s.buffer=b;s.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=700;f.Q.value=.6;const g=c.createGain();g.gain.value=.02;s.connect(f);f.connect(g);g.connect(SND.fx);s.start();LM_.crowd={s,g};}
+  if(!on&&LM_.crowd){try{LM_.crowd.s.stop();}catch(e){}LM_.crowd=null;}}
+function ligBanner(txt,sub){LM_.banner={txt,sub,t0:performance.now()};}
 function ligResize(){const cv=lg$('ligCv'),box=lg$('ligBox'),w=box.clientWidth,h=box.clientHeight,dpr=Math.min(2,devicePixelRatio||1);
   cv.style.width=w+'px';cv.style.height=h+'px';cv.width=w*dpr;cv.height=h*dpr;Object.assign(LM_,{W:w,H:h,dpr,s:w/470});if(LM_.camX===undefined)LM_.camX=384;}
 addEventListener('resize',()=>{if(LM_.run)ligResize();});
-function ligScore(){lg$('ligSB').innerHTML=`<span><img src="${lbadge(0)}" alt="">${LM_.sc[0]}</span><b>${Math.min(90,Math.floor(LM_.min))}'</b><span>${LM_.sc[1]}<img src="${lbadge(LM_.opp)}" alt=""></span>`;}
+function ligScore(){if(lg$('ligProg'))lg$('ligProg').style.width=(Math.min(90,LM_.min)/90*100)+'%';lg$('ligSB').innerHTML=`<span><img src="${lbadge(0)}" alt="">${LM_.sc[0]}</span><b>${Math.min(90,Math.floor(LM_.min))}'</b><span>${LM_.sc[1]}<img src="${lbadge(LM_.opp)}" alt=""></span>`;}
 function ligSay(s){LM_.log.unshift(s);lg$('ligCom').innerHTML=LM_.log.slice(0,3).map((x,i)=>`<p style="opacity:${1-i*.3}">${x}</p>`).join('');}
 const LM_scr=(x,y)=>{const q=fieldImg(x,y);return {x:(q.x-LM_.camX)*LM_.s+LM_.W/2,y:(q.y-LM_.camY)*LM_.s+LM_.H/2};};
 const oppStr=()=>S.lig.str[LM_.opp];
 function ligDraw(t){if(!LM_.run)return;const cv=lg$('ligCv'),c=cv.getContext('2d');c.setTransform(LM_.dpr,0,0,LM_.dpr,0,0);
   const dt=Math.min(50,t-(LM_.lt||t));LM_.lt=t;
   try{
-  if(!LM_.paused&&!LM_.ended){LM_.min=Math.min(90,LM_.min+dt/1000*2.2);ligScore();ligStep(dt,t);
+  if(!LM_.paused&&!LM_.ended){const sdt=dt*LM_.spd;LM_.simT+=sdt;LM_.min=Math.min(90,LM_.min+sdt/1000*2.2);ligScore();ligStep(sdt,LM_.simT);
+    if(!LM_.ht&&LM_.min>=45){LM_.ht=true;LM_.paused=true;ligWhistle(2);ligSay(`Devre arası. Skor ${LM_.sc[0]}-${LM_.sc[1]}.`);ligBanner('DEVRE ARASI',`${LM_.sc[0]} - ${LM_.sc[1]}`);
+      setTimeout(()=>{if(!LM_.run)return;for(const p of LM_.pl){p.x=p.bx;p.y=p.by;}Object.assign(LM_.ball,{x:.5,y:.5,mode:'hold',holder:LM_.pl.find(p=>p.side===1&&p.i===4)});LM_.paused=false;LM_.lt=performance.now();ligWhistle(1);ligSay('İkinci yarı başladı!');},2200);}
+    if(LM_.crowd){const b=LM_.ball,close=1-Math.min(1,Math.min(b.y,1-b.y)*3.2);LM_.crowd.g.gain.setTargetAtTime(.012+.05*close,SND.ctx.currentTime,.3);}
+    if(Math.random()<dt/1000*.012){const p=LM_.pl.filter(q=>!q.gk)[Math.floor(Math.random()*8)];LM_.stats.cards++;ligSay(`🟨 Sarı kart: ${plName(p)} (${p.side===0?lteam(0):lteam(LM_.opp)})`);}
     const mo=LM_.moments.find(m=>!m.done&&LM_.min>=m.m);if(mo)ligMoment(mo);
-    if(LM_.min>=90){LM_.ended=true;ligSay('Hakem son düdüğü çaldı! Maç bitti.');if(SND.ctx){tone('sine',2600,2400,.3,.12);setTimeout(()=>tone('sine',2600,2400,.7,.12),350);}setTimeout(ligEnd,1200);}}
+    if(LM_.min>=90){LM_.ended=true;ligSay('Hakem son düdüğü çaldı! Maç bitti.');ligWhistle(3);ligBanner('MAÇ SONU',`${LM_.sc[0]} - ${LM_.sc[1]}`);setTimeout(ligEnd,1800);}}
   // kamera topu takip eder (gökyüzü ve tribün dışarıda kalır)
   const b=LM_.ball,bq0=fieldImg(b.x,b.y),half=LM_.H/2/LM_.s,halfW=LM_.W/2/LM_.s;LM_.camY+=(bq0.y-LM_.camY)*Math.min(1,dt/400);LM_.camX+=(bq0.x-LM_.camX)*Math.min(1,dt/500);
   LM_.camY=Math.max(PF.y0-90+half,Math.min(PF.y1+90-half,LM_.camY));LM_.camX=Math.max(PF.x0-40+halfW,Math.min(PF.x1+40-halfW,LM_.camX));if(PF.x1-PF.x0+80<2*halfW)LM_.camX=384;
@@ -2440,11 +2463,23 @@ function ligDraw(t){if(!LM_.run)return;const cv=lg$('ligCv'),c=cv.getContext('2d
   const bq=LM_scr(b.x,b.y),br=6*LM_.s,lift=b.mode==='pass'?Math.sin(Math.min(1,b.prog)*Math.PI)*b.loft*LM_.s:0;
   c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.ellipse(bq.x,bq.y,br*.9,br*.35,0,0,7);c.fill();
   if(IM.k_ball){c.save();c.translate(bq.x,bq.y-br-lift);c.rotate(b.rot||0);c.drawImage(IM.k_ball,-br,-br,br*2,br*2);c.restore();}
+  // topu süren oyuncunun adı
+  if(b.holder&&b.mode==='hold'&&!b.holder.gk){const q=LM_scr(b.holder.x,b.holder.y),nm=plName(b.holder);c.font=`700 ${Math.round(11*LM_.s)}px Fredoka,sans-serif`;const tw=c.measureText(nm).width+12*LM_.s;
+    c.fillStyle=b.holder.side===0?'rgba(30,120,50,.88)':'rgba(30,60,160,.88)';const y=q.y-74*LM_.s;c.beginPath();c.roundRect?c.roundRect(q.x-tw/2,y-9*LM_.s,tw,18*LM_.s,9*LM_.s):c.rect(q.x-tw/2,y-9*LM_.s,tw,18*LM_.s);c.fill();
+    c.fillStyle='#fff';c.textAlign='center';c.textBaseline='middle';c.fillText(nm,q.x,y+1);}
+  // konfeti
+  for(const p of LM_.conf){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.0006*dt;p.r+=.01*dt;c.save();c.translate(p.x,p.y);c.rotate(p.r);c.fillStyle=p.c;c.fillRect(-4,-2,8,4);c.restore();}
+  LM_.conf=LM_.conf.filter(p=>p.y<LM_.H+20);
+  // büyük yazı (GOL / DEVRE ARASI / MAÇ SONU)
+  const bn=LM_.banner;if(bn){const d=(t-bn.t0)/2000;if(d<1){const s=d<.12?d/.12*1.15:1.15-Math.min(.15,(d-.12)*.5);c.save();c.globalAlpha=d>.8?(1-d)/.2:1;
+      c.fillStyle='rgba(0,0,0,.35)';c.fillRect(0,LM_.H*.38,LM_.W,LM_.H*.2);c.translate(LM_.W/2,LM_.H*.46);c.scale(s,s);c.textAlign='center';c.textBaseline='middle';
+      let fs=Math.round(LM_.W*.14);c.font=`800 ${fs}px Fredoka,sans-serif`;const mw=c.measureText(bn.txt).width;if(mw>LM_.W*.88){fs=Math.floor(fs*LM_.W*.88/mw);c.font=`800 ${fs}px Fredoka,sans-serif`;}c.lineWidth=10;c.strokeStyle='#14451d';c.strokeText(bn.txt,0,0);c.fillStyle='#ffd23a';c.fillText(bn.txt,0,0);
+      if(bn.sub){c.font=`700 ${Math.round(LM_.W*.055)}px Fredoka,sans-serif`;c.lineWidth=6;c.strokeText(bn.sub,0,LM_.W*.11);c.fillStyle='#fff';c.fillText(bn.sub,0,LM_.W*.11);}c.restore();}else LM_.banner=null;}
   }catch(e){console.warn('maç',e);}
   requestAnimationFrame(ligDraw);}
 function movePl(p,tx,ty,sp,dt){const dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy),m=Math.min(d,sp*dt);if(d>1e-4){p.x+=dx/d*m;p.y+=dy/d*m;if(Math.abs(dx)>.002)p.flip=dx<0;}
   p.spd=m/dt;p.step+=m*55;}
-function ligStep(dt,t){const B=LM_.ball,pl=LM_.pl,H=B.holder,att=H?H.side:B.side;
+function ligStep(dt,t){const B=LM_.ball,pl=LM_.pl,H=B.holder,att=H?H.side:B.side;if(att===0||att===1)LM_.stats.pos[att]+=dt;
   const goalY=s=>s===0?.04:.96; // hücum yönü
   // pas/şut uçuşu
   if(B.mode==='pass'){B.prog+=dt/B.dur;B.rot=(B.rot||0)+dt*.02;const e=Math.min(1,B.prog);B.x=B.sx+(B.tx-B.sx)*e;B.y=B.sy+(B.ty-B.sy)*e;
@@ -2453,7 +2488,7 @@ function ligStep(dt,t){const B=LM_.ball,pl=LM_.pl,H=B.holder,att=H?H.side:B.side
   const Hn=B.holder;
   for(const p of pl){let tx=p.bx,ty=p.by,sp=.00011;
     const ownBall=Hn&&Hn.side===p.side||B.mode==='pass'&&B.side===p.side;
-    if(p.gk){tx=.5+(B.x-.5)*.35;ty=p.by;sp=.00008;}
+    if(p.gk){tx=.5+(B.x-.5)*.35;ty=p.by;sp=.00008;if(B.mode==='pass'&&B.shot&&B.side!==p.side){tx=B.tx;sp=.00025;}}
     else if(p===Hn){tx=Hn.x+(.5-Hn.x)*.15+Math.sin(t/500+p.i)*.04;ty=goalY(p.side);sp=.000085;}
     else if(B.mode==='pass'&&p===B.to){tx=B.tx;ty=B.ty;sp=.00014;}
     else{const shift=ownBall?(p.side===0?-.16:.16):(p.side===0?.06:-.06);tx=p.bx+(B.x-.5)*.4;ty=p.by+shift+(B.y-.5)*.3;}
@@ -2465,13 +2500,17 @@ function ligStep(dt,t){const B=LM_.ball,pl=LM_.pl,H=B.holder,att=H?H.side:B.side
       const ad=(Hn.side===0?ourStr()-oppStr():oppStr()-ourStr())/250;
       if(Hn.gk){ligPass(Hn,pl.filter(q=>q.side===Hn.side&&!q.gk)[Math.floor(Math.random()*4)]);}
       else if(dd<.05&&Math.random()<.45-ad){B.holder=near;near.kick=t;ligSay(near.side===0?`${OURS[near.i]||'Can'} topu kaptı!`:`${lteam(LM_.opp)} topu kaptı.`);}
-      else if((Hn.side===0?Hn.y<.2:Hn.y>.8)){Hn.kick=t;B.mode='pass';B.shot=true;B.side=Hn.side;B.sx=B.x;B.sy=B.y;B.tx=.5+(Math.random()-.5)*.12;B.ty=Hn.side===0?.0:1;B.prog=0;B.dur=450;B.loft=10;B.holder=null;
-        if(Math.random()<.06+ad){setTimeout(()=>{if(LM_.run&&!LM_.ended)ligGoal(Hn.side,Hn.side===0?`${OURS[Hn.i]||'Temel'} ceza sahasından vurdu… GOOOL!`:`${lteam(LM_.opp)} golü buldu.`);},460);}}
+      else if((Hn.side===0?Hn.y<.2:Hn.y>.8)){Hn.kick=t;B.mode='pass';B.shot=true;B.side=Hn.side;LM_.stats.sh[Hn.side]++;ligSay(`${plName(Hn)} şut çekti!`);B.sx=B.x;B.sy=B.y;B.tx=.5+(Math.random()-.5)*.12;B.ty=Hn.side===0?.0:1;B.prog=0;B.dur=450;B.loft=10;B.holder=null;
+        if(Math.random()<.06+ad){setTimeout(()=>{if(LM_.run&&!LM_.ended)ligGoal(Hn.side,Hn.side===0?`${plName(Hn)} ceza sahasından vurdu… GOOOL!`:`${plName(Hn)} golü buldu.`,plName(Hn));},460);}}
       else if(dd<.09||Math.random()<.35){const mates=pl.filter(q=>q.side===Hn.side&&!q.gk&&q!==Hn);ligPass(Hn,mates.sort((a,b2)=>(Hn.side===0?a.y-b2.y:b2.y-a.y))[Math.floor(Math.random()*2)]);}}}}
 function nearest(arr,p){let b=null,bd=9;for(const q of arr){const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;b=q;}}return b;}
-function ligPass(from,to){const B=LM_.ball;if(!to)return;from.kick=performance.now();Object.assign(B,{mode:'pass',side:from.side,to,sx:B.x,sy:B.y,tx:to.x+(to.side===0?0:0),ty:to.y+(to.side===0?-.03:.03),prog:0,holder:null});
+function ligPass(from,to){const B=LM_.ball;if(!to)return;from.kick=performance.now();LM_.stats.ps[from.side]++;
+  if(Math.random()<.18)ligSay([`${plName(from)} pası ${plName(to)}'ya bıraktı.`,`${plName(from)} kanada açtı.`,`Güzel bir pas: ${plName(from)} → ${plName(to)}`,`${plName(from)} oyunu geriden kuruyor.`][Math.floor(Math.random()*4)]);Object.assign(B,{mode:'pass',side:from.side,to,sx:B.x,sy:B.y,tx:to.x+(to.side===0?0:0),ty:to.y+(to.side===0?-.03:.03),prog:0,holder:null});
   const d=Math.hypot(B.tx-B.sx,B.ty-B.sy);B.dur=250+d*1500;B.loft=d>.3?14:3;}
-function ligGoal(side,msg){LM_.sc[side]++;LM_.cel=performance.now();LM_.celSide=side;ligScore();ligSay(msg);
+function ligGoal(side,msg,who){LM_.sc[side]++;LM_.cel=performance.now();LM_.celSide=side;ligScore();ligSay('⚽ '+msg);
+  const sc=LM_.pl.filter(p=>p.side===side&&!p.gk)[Math.floor(Math.random()*4)],nm=who||plName(sc);
+  LM_.stats.goals.push({side,min:Math.max(1,Math.floor(LM_.min)),nm});ligBanner(side===0?'GOOOL!':'Gol yedik…',`${nm} ${Math.max(1,Math.floor(LM_.min))}'`);
+  if(side===0)for(let i=0;i<70;i++)LM_.conf.push({x:Math.random()*LM_.W,y:-20-Math.random()*LM_.H*.4,vx:(Math.random()-.5)*.08,vy:.05+Math.random()*.15,r:Math.random()*6,c:['#ffd23a','#5fc03a','#fff','#e2483d','#3da5f5'][i%5]});
   if(side===0){sfx.fanfare();if(SND.ctx)noise(.9,.15,null,500);}else if(SND.ctx)tone('triangle',300,150,.4,.12);
   setTimeout(()=>{if(!LM_.run)return;for(const p of LM_.pl){p.x=p.bx;p.y=p.by;}Object.assign(LM_.ball,{x:.5,y:.5,mode:'hold',holder:LM_.pl.find(p=>p.side===1-side&&p.i===4)});},1600);}
 
@@ -2479,8 +2518,8 @@ const MOMENT_TXT={pen:['Ceza sahasında düşürüldü! Hakem penaltı noktasın
   '1v1':['Hüsnü derin pası attı, Temel kaleciyle karşı karşıya!','karşı karşıya'],save:['Rakip tehlikeli geliyor… şut çekecek! Kalede sen varsın!','kurtarış']};
 function ligMoment(mo){mo.done=true;LM_.paused=true;ligSay('⚠️ '+MOMENT_TXT[mo.type][0]);
   setTimeout(()=>openShot(mo.type,ok=>{LM_.paused=false;LM_.lt=performance.now();
-    if(mo.type==='save'){if(ok)ligSay('Müthiş kurtarış! Kalemiz gole kapalı!');else ligGoal(1,`${lteam(LM_.opp)} golü attı.`);}
-    else{if(ok)ligGoal(0,`GOOOL! ${mo.type==='pen'?'Penaltıyı':mo.type==='fk'?'Serbest vuruşu':'Pozisyonu'} gole çevirdik!`);else ligSay('Olmadı… fırsat kaçtı.');}
+    if(mo.type==='save'){if(ok)ligSay('Müthiş kurtarış! Kalemiz gole kapalı!');else{const nm=RIVALS[3+Math.floor(Math.random()*2)];ligGoal(1,`${nm} şutunu çıkardı, ağlar havalandı.`,nm);}}
+    else{const nm=mo.type==='fk'?'Hüsnü':'Temel';if(ok)ligGoal(0,`${nm} ${mo.type==='pen'?'penaltıyı':mo.type==='fk'?'serbest vuruşu':'pozisyonu'} gole çevirdi!`,nm);else ligSay('Olmadı… fırsat kaçtı.');}
     if(!LM_.run)return;}),1300);}
 function ligEnd(){if(!LM_.run)return;LM_.run=false;const o=LM_.opp,[a,b]=LM_.sc,L=S.lig;ligRecord(0,o,a,b);
   for(const[h,w]of L.fx[L.round])if(h!==0&&w!==0){ligRecord(h,w,ligSimGoals(L.str[h],L.str[w]),ligSimGoals(L.str[w],L.str[h]));}
@@ -2491,6 +2530,9 @@ function ligEnd(){if(!LM_.run)return;LM_.run=false;const o=LM_.opp,[a,b]=LM_.sc,
     else extra=`<p>Sezonu ${pos}. sırada bitirdin.</p>`;}
   changed();
   lg$('ligEndTxt').innerHTML=`<h2>${res==='win'?'Kazandık!':res==='draw'?'Berabere':'Kaybettik'}</h2><div class="vs"><span><img src="${lbadge(0)}" alt="">${a}</span><b>-</b><span>${b}<img src="${lbadge(o)}" alt=""></span></div><p>${COIN} +${coins}</p>${extra}`;
+  const st=LM_.stats,ps=st.pos[0]+st.pos[1]||1,poss=Math.round(st.pos[0]/ps*100);ligCrowd(false);
+  const gl=st.goals.map(g=>`<span class="${g.side===0?'me':''}">⚽ ${g.nm} ${g.min}'</span>`).join('');
+  lg$('ligEndTxt').insertAdjacentHTML('beforeend',`${gl?`<div class="lgoals">${gl}</div>`:''}<table class="lstat"><tr><td>%${poss}</td><th>Topla oynama</th><td>%${100-poss}</td></tr><tr><td>${st.sh[0]}</td><th>Şut</th><td>${st.sh[1]}</td></tr><tr><td>${st.ps[0]}</td><th>Pas</th><td>${st.ps[1]}</td></tr></table>`);
   lg$('ligEnd').classList.add('on');}
 /* ---------- kritik anlar (penaltı ekranını kullanır) ---------- */
 function openShot(mode,cb){for(const k of['k_bg','k_ready','k_dive1','k_dive2','k_jump','k_hold','k_ball','k_wall','k_rush','k_shooter','k_striker'])loadImg(k);
@@ -2527,7 +2569,7 @@ function drawSave(t,c,W,H){const{s,ox,oy}=penFit();c.drawImage(IM.k_bg,ox,oy,PBG
   penOverlay(t,c,W,H,sx,sy);requestAnimationFrame(penDraw);}
 function penBanner(txt,good){PEN.banner={txt,good,t0:performance.now()};}
 
-function ligBind(){lg$('ligClose').onclick=closeLig;lg$('ligBack2').onclick=()=>{lg$('ligEnd').classList.remove('on');ligTable();};}
+function ligBind(){lg$('ligClose').onclick=closeLig;lg$('ligSpd').onclick=()=>{LM_.spd=LM_.spd===1?2:1;lg$('ligSpd').textContent=LM_.spd===1?'⏩ 2x':'▶️ 1x';};lg$('ligBack2').onclick=()=>{lg$('ligEnd').classList.remove('on');ligTable();};}
 
 /* ================= START ================= */
 $('hudCoin').src=IMG_SRC.i_coin;$('hudStar').src=IMG_SRC.u_star;$('popImg').src=IMG_SRC.w_farmer;
