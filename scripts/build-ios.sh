@@ -50,6 +50,14 @@ P=ios/App/App/Info.plist
 /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" "$P"
 /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait" "$P"
 /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$P" || /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$P"
+# AdMob (ödüllü reklam): uygulama kimliği ve iOS izin metni
+source scripts/ads.env
+/usr/libexec/PlistBuddy -c "Add :GADApplicationIdentifier string $ADMOB_IOS_APP_ID" "$P" || /usr/libexec/PlistBuddy -c "Set :GADApplicationIdentifier $ADMOB_IOS_APP_ID" "$P"
+/usr/libexec/PlistBuddy -c "Add :NSUserTrackingUsageDescription string Size daha uygun reklamlar gösterebilmek için kullanılır." "$P" || true
+/usr/libexec/PlistBuddy -c "Delete :SKAdNetworkItems" "$P" || true
+/usr/libexec/PlistBuddy -c "Add :SKAdNetworkItems array" "$P"
+/usr/libexec/PlistBuddy -c "Add :SKAdNetworkItems:0 dict" "$P"
+/usr/libexec/PlistBuddy -c "Add :SKAdNetworkItems:0:SKAdNetworkIdentifier string cstr6suwn9.skadnetwork" "$P"
 echo "::endgroup::"
 
 echo "::group::App Store Connect anahtarı"
