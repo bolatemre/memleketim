@@ -21,6 +21,10 @@ npx @capacitor/assets generate --android --iconBackgroundColor "#f0a050" --splas
 G=android/app/build.gradle
 sed -i -E "s/versionCode [0-9]+/versionCode ${BUILD_NUMBER}/; s/versionName \"[^\"]*\"/versionName \"1.0.${BUILD_NUMBER}\"/" "$G"
 perl -0pi -e 's/<activity(\s)/<activity android:screenOrientation="portrait"$1/' android/app/src/main/AndroidManifest.xml
+# AdMob (ödüllü reklam) uygulama kimliği
+source scripts/ads.env
+perl -0pi -e "s#(<application[^>]*>)#\$1\n        <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"$ADMOB_ANDROID_APP_ID\"/>#" android/app/src/main/AndroidManifest.xml
+grep -n "APPLICATION_ID" android/app/src/main/AndroidManifest.xml
 grep -E "versionCode|versionName" "$G"
 echo "::endgroup::"
 
