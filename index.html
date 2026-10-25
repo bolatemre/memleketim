@@ -782,10 +782,19 @@ const sfx={
   dice:()=>{if(!SND.ctx)return;const t=SND.ctx.currentTime;for(let i=0;i<7;i++)noise(.03,.12,t+i*.06+Math.random()*.03,1800);},
   fanfare:()=>{if(!SND.ctx)return;const t=SND.ctx.currentTime;[0,2,4,7].forEach((n,i)=>pluck(HICAZ[n]*2,t+i*.12,.25,SND.fx));}
 };
+// Gizli kodlar: sadece kodu bilen kullanabilir, cihaz başına bir kez
+async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s.trim().toUpperCase()));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+const CODES={'cb0eb6d71ed05e4ccd47e79a55891e6280ef9625aa3e7770fd9bf9daa35a8d72':{lvl:22,coins:30000,gems:150,items:{usta:10,nails:40,plank:30,steel:20,gear:10},msg:'Hoş geldin geri! 22. seviyeden devam.'}};
+async function redeemCode(c){if(!c)return;S.codes=S.codes||[];const h=await sha(c),g=CODES[h];if(!g){toast('Kod geçersiz');return;}if(S.codes.includes(h)){toast('Bu kod bu cihazda zaten kullanıldı');return;}
+  S.codes.push(h);if(g.lvl&&S.lvl<g.lvl){S.lvl=g.lvl;S.xp=0;}S.coins+=g.coins||0;S.gems=(S.gems||0)+(g.gems||0);for(const[k,q]of Object.entries(g.items||{}))addItem(k,q);
+  sfx.fanfare();toast(g.msg);closeSheet();changed();}
 function setAudio(k,v){SND.on[k]=v;saveAudio();if(SND.ctx){if(k==='music')SND.mus.gain.value=v?.55:0;else SND.fx.gain.value=v?1:0;}soundPill();}
 function soundPill(){const el=$('sndPill');if(el)el.textContent=SND.on.music||SND.on.sfx?'🔊':'🔇';}
 function openSound(){openSheet('Ses',()=>{$('sBody').innerHTML=`<div class="row"><div class="mid"><div class="t">Müzik</div><div class="d">Hicaz makamında bağlama ezgisi</div></div><button class="btn ${SND.on.music?'':'alt'}" id="tMus">${SND.on.music?'Açık':'Kapalı'}</button></div>
   <div class="row"><div class="mid"><div class="t">Efektler</div><div class="d">Hasat, altın, çay kaşığı, inek, horoz…</div></div><button class="btn ${SND.on.sfx?'':'alt'}" id="tSfx">${SND.on.sfx?'Açık':'Kapalı'}</button></div>`;
+  $('sBody').insertAdjacentHTML('beforeend',`${IS_NATIVE?`<div class="stat"><span>Reklam durumu</span><span>${ADS.ready?'✅ hazır':'⏳ '+(ADS.err||'hazırlanıyor')}</span></div>`:''}
+    <div class="sec">Kod</div><div class="row"><input id="codeIn" placeholder="Kodun varsa yaz" autocomplete="off" style="flex:1;min-width:0;border-radius:12px;border:2px solid var(--panel-edge);padding:10px;font:inherit;background:var(--chip);color:var(--ink)"><button class="btn" id="codeOk">Kullan</button></div>`);
+  $('codeOk').onclick=()=>redeemCode($('codeIn').value);
   $('tMus').onclick=()=>{audioInit();setAudio('music',!SND.on.music);sheetCtx();};$('tSfx').onclick=()=>{audioInit();setAudio('sfx',!SND.on.sfx);sheetCtx();};});}
 
 /* ================= GÜNLÜK ÖDÜL ================= */
@@ -2062,15 +2071,17 @@ function buyPack(id){const p=id==='starter'?STARTER:GEMPACKS.find(x=>x.id===id);
   sfx.fanfare();toast(`Test satın alma: +${p.g} elmas`);changed();sheetCtx();}
 /* ---------- ÖDÜLLÜ REKLAM (AdMob) ---------- */
 const ADS={ready:false,ios:'ca-app-pub-6236520075152909/2429015849',android:'ca-app-pub-6236520075152909/2469166410',busy:false}; // Köyden Şehre ödüllü reklam birimleri
-async function adsInit(){if(!IS_NATIVE)return;const P=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.AdMob;if(!P)return;
-  try{await P.initialize({requestTrackingAuthorization:true,initializeForTesting:false});ADS.p=P;ADS.ready=true;}catch(e){console.warn('reklam başlatılamadı',e);}}
-const adsAvailable=()=>!IS_NATIVE||ADS.ready;
+function admobPlugin(){const C=window.Capacitor;if(!C)return null;return (C.Plugins&&C.Plugins.AdMob)||(C.registerPlugin?C.registerPlugin('AdMob'):null);}
+async function adsInit(){if(!IS_NATIVE||ADS.ready||ADS.initing)return;const P=admobPlugin();if(!P){ADS.err='AdMob eklentisi bulunamadı';return;}
+  ADS.initing=true;try{await P.initialize({requestTrackingAuthorization:true,initializeForTesting:false});ADS.p=P;ADS.ready=true;ADS.err='';}catch(e){ADS.err=String(e&&e.message||e);console.warn('reklam başlatılamadı',e);}ADS.initing=false;}
+// Reklam düğmeleri cihazda her zaman görünür; hazır değilse basınca yeniden denenir
+const adsAvailable=()=>true;
 async function showRewardedAd(onReward){if(ADS.busy)return;if(!IS_NATIVE){watchAd(onReward);return;}
-  if(!ADS.ready){toast('Reklam şu an hazır değil, biraz sonra tekrar dene');return;}
+  if(!ADS.ready){await adsInit();if(!ADS.ready){toast('Reklam şu an yüklenemedi, biraz sonra tekrar dene');return;}}
   ADS.busy=true;let rewarded=false;
   try{const plat=window.Capacitor.getPlatform();await ADS.p.prepareRewardVideoAd({adId:plat==='ios'?ADS.ios:ADS.android});
     const h=await ADS.p.addListener('onRewardedVideoAdReward',()=>{rewarded=true;});const r=await ADS.p.showRewardVideoAd();if(r)rewarded=true;try{h.remove();}catch(e){}}
-  catch(e){toast('Reklam yüklenemedi, biraz sonra tekrar dene');}
+  catch(e){ADS.err=String(e&&e.message||e);toast('Reklam şu an yok (yeni reklam birimleri ilk saatlerde boş dönebilir). Biraz sonra tekrar dene.');}
   ADS.busy=false;if(rewarded){onReward();}}
 function watchAd(done){const o=document.createElement('div');o.className='adov';let n=3;o.innerHTML=`<div><b>Reklam</b><p>Burada gerçek bir reklam gösterilecek.</p><span id="adN">${n}</span></div>`;document.body.appendChild(o);
   const iv=setInterval(()=>{n--;const el=document.getElementById('adN');if(el)el.textContent=n;if(n<=0){clearInterval(iv);o.remove();done();}},1000);}
@@ -2291,7 +2302,7 @@ const PEN={run:false};
 const pen$=id=>document.getElementById(id);
 function openPenalty(){if(pen$('penTitle'))pen$('penTitle').textContent='⚽ Penaltı';for(const k of['k_bg','k_ready','k_dive1','k_dive2','k_jump','k_hold','k_ball'])loadImg(k);const today=dayKey(now());S.pen=S.pen&&S.pen.day===today?S.pen:{day:today,plays:0};audioInit();
   const free=S.pen.plays<3;
-  if(!free&&!S.pen.adOk){if(adsAvailable()){openSheet('Penaltı',()=>{$('sBody').innerHTML=`<p class="sub">Bugünkü 3 bedava maçın bitti.</p><div style="display:flex;gap:8px;justify-content:center"><button class="btn" id="penAd">🎬 Reklam izle, oyna</button><button class="btn alt" id="penGem">1 ${GEM} ile oyna</button></div>`;
+  if(!free&&!S.pen.adOk){if(true){openSheet('Penaltı',()=>{$('sBody').innerHTML=`<p class="sub">Bugünkü 3 bedava maçın bitti.</p><div style="display:flex;gap:8px;justify-content:center"><button class="btn" id="penAd">🎬 Reklam izle, oyna</button><button class="btn alt" id="penGem">1 ${GEM} ile oyna</button></div>`;
       $('penAd').onclick=()=>showRewardedAd(()=>{S.pen.adOk=true;closeSheet();openPenalty();});$('penGem').onclick=()=>{if(spendGems(1)){S.pen.adOk=true;closeSheet();openPenalty();}};});return;}
     if(!spendGems(1))return;}
   if(S.pen.adOk)S.pen.adOk=false;S.pen.plays++;save();
