@@ -142,6 +142,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 <style>
 .hud{align-items:flex-start}
 .hud .lvl{margin-top:2px}
+#powPill.low{background:rgba(190,40,30,.85);animation:pulse 1.2s infinite}
 .pop{pointer-events:auto;display:flex;align-items:center;gap:4px;background:rgba(30,30,40,.55);border:2px solid rgba(255,255,255,.7);
   border-radius:14px;padding:2px 10px 2px 2px;color:#fff;font-weight:600;font-size:15px;margin-top:6px}
 .pop img{width:26px;height:26px;object-fit:contain}
@@ -326,6 +327,7 @@ button,.btn,.btn-round,[role=button],[data-l],[data-buy]{touch-action:manipulati
     <div class="coins"><img class="coinimg" id="hudCoin" alt="" width="30" height="30"><span id="coins">0</span></div>
     <div class="coins gemp" id="gemPill"><img class="coinimg" data-ic="i_gem" alt="" width="28" height="28"><span id="gems">0</span><b class="plus">+</b></div>
     <div class="pop" id="popPill" title="Boştaki işçi / toplam nüfus"><img id="popImg" alt=""><span id="pop">0/0</span></div>
+    <div class="pop" id="powPill" role="button" title="Elektrik üretim / tüketim" style="display:none"><span id="pow">⚡ 0/0</span></div>
     <div class="pop" id="clockPill" style="padding:3px 10px"><span id="clock">☀️ 12:00</span></div>
     <div class="pop" id="sndPill" style="padding:3px 10px;font-size:17px">🔊</div>
   </div>
@@ -678,6 +680,15 @@ const has=k=>{const[f,m]=famOf(k);return S.ents.some(e=>e.type===f&&lv(e)>=m);};
 function joy(){return S.ents.reduce((a,e)=>a+Math.round((DEF[e.type].joy||0)*(1+.3*(lv(e)-1))),0)+(showOn()?20:0)-(cityC.v&&!cityC.v.health?15:0);}
 const showOn=()=>S&&S.showUntil&&now()<S.showUntil;
 let cityC={t:0,v:null};
+function openPower(){openSheet('⚡ Elektrik',()=>{const c=cityNeeds(),prod=S.ents.filter(e=>e.type==='solar'),use=S.ents.filter(e=>{const d=DEF[e.type];return d&&d.looks&&e.type!=='solar'&&lv(e)>=7;});
+    $('sBody').innerHTML=`<div class="stat"><span>Üretim</span><span>${c.supply}</span></div><div class="stat"><span>Tüketim</span><span>${c.demand}</span></div>
+    <div class="stat"><span>Durum</span><span style="color:${c.power?'#3a9a2a':'#e2483d'}">${c.power?'Yeterli':'YETERSİZ: üretim %30 yavaş'}</span></div>
+    <p class="sub">Köyün temel elektriği (12) bedava. Seviye 7 ve üstündeki her bina 4, her ev 2 elektrik harcar. Enerji binası kurup yükselttikçe üretim artar.</p>
+    <div class="sec">Üretenler</div>${prod.length?prod.map(e=>`<div class="stat"><span>Enerji · Sv. ${lv(e)}</span><span>+${Math.round((DEF.solar.energy||0)*(1+.3*(lv(e)-1))*1.5)}</span></div>`).join(''):'<p class="sub">Henüz enerji binan yok.</p>'}
+    <div class="sec">Tüketenler</div>${use.length?use.map(e=>`<div class="stat"><span>${DEF[e.type].name} · Sv. ${lv(e)}</span><span>−${DEF[e.type].kind==='house'?2:4}</span></div>`).join(''):'<p class="sub">Henüz elektrik harcayan bina yok (seviye 7’den sonra başlar).</p>'}
+    <div style="text-align:center;margin-top:10px">${prod.length?'<button class="btn" id="powGo">Enerji binasına git</button>':'<button class="btn" id="powBuild">Enerji binası kur</button>'}</div>`;
+    if($('powGo'))$('powGo').onclick=()=>{const e=prod.sort((a,b)=>lv(a)-lv(b))[0];closeSheet();panTo(e,()=>openUpgrade?openUpgrade(e):null);};
+    if($('powBuild'))$('powBuild').onclick=()=>{closeSheet();openShop();};});}
 function cityNeeds(){const n=performance.now();if(cityC.v&&n-cityC.t<1000)return cityC.v;const pop=popTotal(),supply=12+Math.round(energy()*1.5);let demand=0;
   for(const e of S.ents){const d=DEF[e.type];if(d&&d.looks&&lv(e)>=7)demand+=d.kind==='house'?2:4;}
   const v={pop,supply,demand,power:supply>=demand,health:pop<70||has('hospital'),school:pop<45||has('school')};cityC={t:n,v};return v;}
@@ -1352,7 +1363,7 @@ const overlayOpen=()=>['m3','lig','pen'].some(id=>{const el=document.getElementB
 function draw(){requestAnimationFrame(draw);if(document.hidden||overlayOpen())return;
   const pn=performance.now();if(frameLast){frameAvg=frameAvg*.97+Math.min(100,pn-frameLast)*.03;if(frameAvg>36&&DPR_CAP>1.25&&pn-(draw.adj||0)>4000){DPR_CAP-=.25;draw.adj=pn;resize();}}frameLast=pn;
   try{drawFrame();}catch(e){if(drawErr++<3)console.warn('çizim hatası',e);}}
-function drawZoomLabels(){if(cam.z>.72)return;const k=1/cam.z,a=Math.min(1,(.72-cam.z)/.12);
+function drawZoomLabels(){if(cam.z>.62)return;const k=1/cam.z,a=Math.min(1,(.62-cam.z)/.1);
   const vx0=cam.x-W/2/cam.z,vx1=cam.x+W/2/cam.z,vy0=cam.y-H/2/cam.z,vy1=cam.y+H/2/cam.z;ctx.save();ctx.globalAlpha=a;
   for(const e of S.ents){const d=DEF[e.type];if(!d||!d.looks||e.type==='cottage')continue;const r=rectOf(e);if(!r||r.x>vx1||r.x+r.w<vx0||r.y>vy1||r.y+r.h<vy0)continue;
     const out=d.rl?RECIPES[Object.keys(d.rl)[0]]&&RECIPES[Object.keys(d.rl)[0]].out:null,im=out?IM['i_'+out]:null,nm=d.name,lvT=' '+lv(e);
@@ -1589,6 +1600,8 @@ function upEffect(e){const d=DEF[e.type],L=lv(e);const out=[];
   if(d.kind==='barn')out.push(`Ambar kapasitesi ${barnCap(e)} → ${barnCap({...e,lv:L+1})}`);
   if(d.looks){const nl=Math.min(d.looks.length-1,Math.floor(L*d.looks.length/MAXL));if(nl!==lookIdx(e)&&IMG_SRC[d.looks[nl]])out.push(`<span>Yeni görünüş!</span><img src="${IMG_SRC[d.looks[nl]]}" alt="" style="width:120px">`);
     if(d.rl)for(const[r,m]of Object.entries(d.rl))if(m===L+1&&hasIcon(RECIPES[r].out))out.push(`Yeni ürün: ${ic(RECIPES[r].out)} ${ITEMS[RECIPES[r].out].n}`);}
+  if(d.looks&&L+1===7&&e.type!=='solar')out.push(`⚡ Bu seviyeden sonra ${d.kind==='house'?2:4} elektrik harcar`);
+  if(e.type==='solar')out.push(`⚡ Elektrik üretimi artar`);
   if(d.kind==='prod'){const nx={...e,lv:L+1};if(qMax(nx)>qMax(e))out.push(`Üretim sırası ${qMax(e)} → ${qMax(nx)}`);out.push(`Üretim hızı +%${Math.round((1-lvSpeed(nx))*100)}`);}
   if(d.pop)out.push(`Nüfus ${Math.round(d.pop*(1+.25*(L-1)))} → ${Math.round(d.pop*(1+.25*L))}`);
   if(d.kind==='house'&&d.coins)out.push(`Gelir ${rentOf(d,e)} → ${Math.round(d.coins*(1+.3*L)*(1+joy()/100))}`);
@@ -1804,6 +1817,7 @@ function hud(){
   {const m=gameMin(),h=m/60,ez=VAKIT.find(([n,s])=>s>m)||VAKIT[0];$('clock').textContent=(h>=6.5&&h<19.5?'☀️ ':'🌙 ')+hhmm(m);$('clockPill').title='Sıradaki ezan: '+ez[0]+' '+hhmm(ez[1]);}
   $('lvl').textContent=S.lvl;$('coins').textContent=S.coins;if($('gems'))$('gems').textContent=S.gems||0;$('xp').style.width=Math.min(100,S.xp/xpNeed(S.lvl)*100)+'%';
   $('pop').textContent=(popTotal()-workersUsed())+'/'+popTotal();
+  {const c=cityNeeds(),show=c.demand>0||has('solar')||S.era>=2,p=$('powPill');if(p){p.style.display=show?'':'none';$('pow').textContent=`⚡ ${c.supply}/${c.demand}`;p.classList.toggle('low',!c.power);}}
   const n=S.orders.filter(o=>canTake(o.items)).length;const b=$('ordBadge');b.textContent=n;b.classList.toggle('on',n>0);
 }
 function migrateV3(o){if(!o||!o.ents)return o;const keep=[],best={};
@@ -2781,7 +2795,7 @@ function ligBind(){lg$('ligClose').onclick=closeLig;lg$('ligSub').onclick=openSu
 /* ================= START ================= */
 $('hudCoin').src=IMG_SRC.i_coin;$('hudStar').src=IMG_SRC.u_star;$('popImg').src=IMG_SRC.w_farmer;
 document.querySelectorAll('[data-ic]').forEach(i=>i.src=IMG_SRC[i.dataset.ic]);
-m3Bind();penBind();ligBind();adsInit();load();resize();hud();spawnVillagers();spawnVeh();questUI();
+m3Bind();penBind();ligBind();adsInit();if($('powPill'))$('powPill').onclick=openPower;load();resize();hud();spawnVillagers();spawnVeh();questUI();
 $('quest').onclick=openQuest;setInterval(questUI,1500);
 const TOWN_SUG=['Yeşilyurt','Akpınar','Karaağaç','Çamlıca','Güzelyalı','Kocatepe','Sarıçiçek','Bereketli'];
 function askTownName(after,rename){const box=$('nameBox'),inp=$('townIn');$('nameTitle').textContent=rename?'Köyün yeni adı':'Köyüne bir isim ver';
