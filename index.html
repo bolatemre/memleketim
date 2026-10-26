@@ -1460,9 +1460,9 @@ function tapEnt(e){
       e.react={t0:t,text};e.wait=3400;e.moving=false;return;}
     case 'field':
       if(!e.crop){openPlant(e);return;}
-      if(t<e.crop.end){const left=e.crop.end-t,c=skipCost(left);openSheet('Tarla',()=>{$('sBody').innerHTML=`<div class="row"><div class="ico">${ic(e.crop.c)}</div><div class="mid"><div class="t">${ITEMS[e.crop.c].n} büyüyor</div><div class="d">${fmt(e.crop.end-now())} kaldı</div></div><button class="btn alt" id="grow">Hemen yetiştir ${c} ${GEM}</button></div>`;$('grow').onclick=()=>{if(!spendGems(c))return;e.crop.start-=e.crop.end-now();e.crop.end=now();closeSheet();changed();};});return;}
+      if(t<e.crop.end){const left=e.crop.end-t,c=skipCost(left);openSheet('Tarla',()=>{$('sBody').innerHTML=`<div class="row"><div class="ico">${ic(e.crop.c)}</div><div class="mid"><div class="t">${ITEMS[e.crop.c].n} büyüyor</div><div class="d">${fmt(e.crop.end-now())} kaldı</div></div><button class="btn alt" id="grow">Hemen yetiştir ${c} ${GEM}</button></div>`;$('grow').onclick=()=>{if(!spendGems(c))return;e.crop.start-=e.crop.end-now();e.crop.end=now();closeSheet();tutEvent('skip');changed();};});return;}
       {const cr=CROPS[e.crop.c];if(!roomFor(cr.yield)){barnFull();return;}
-       addItem(e.crop.c,cr.yield);stat('harvest',e.crop.c,cr.yield);sfx.pop();floatText(c.x,c.y-30,'+'+cr.yield,'i_'+e.crop.c);gainXP(cr.xp);e.crop=null;
+       addItem(e.crop.c,cr.yield);stat('harvest',e.crop.c,cr.yield);sfx.pop();floatText(c.x,c.y-30,'+'+cr.yield,'i_'+e.crop.c);gainXP(cr.xp);e.crop=null;tutEvent('harvest');
        // harvest neighbours that are ripe too
        let n=0;for(const f of S.ents)if(f.type==='field'&&f.crop&&t>=f.crop.end&&roomFor(CROPS[f.crop.c].yield)){const q=CROPS[f.crop.c].yield;addItem(f.crop.c,q);stat('harvest',f.crop.c,q);gainXP(CROPS[f.crop.c].xp);const fc=centerOf(f);floatText(fc.x,fc.y-30,'+'+q,'i_'+f.crop.c);f.crop=null;n++;}
        questTick();changed();}
@@ -1503,16 +1503,27 @@ function talk(who,text,acts){text=TN(text);
 }
 function hideTalk(){$('talk').classList.remove('on');}
 const TUT=[
-  ()=>talk('p_elif','Merhaba, ben Elif! Bu küçük kasaba artık senin. Hadi birlikte büyütelim.',[['Geç',()=>{S.tut=9;save();},true],['Başlayalım',()=>{S.tut=1;save();showTut();}]]),
+  ()=>talk('p_elif','Merhaba, ben Elif! Bu küçük kasaba artık senin. Hadi birlikte büyütelim.',[['Geç',()=>{S.tut=99;save();},true],['Başlayalım',()=>{S.gems=(S.gems||0)+15;toast('Hoş geldin hediyesi: +15 elmas!');S.tut=1;save();changed();showTut();}]]),
   ()=>talk('p_elif','Önce tarlalara dokun ve buğday ek. Ekerken süreyi tarlanın üstünde görürsün.',[['Tamam',null]]),
   ()=>talk('p_elif','Harika! Buğday olgunlaşınca parlar. O zaman tarlaya dokunup hasat et.',[['Tamam',null]]),
   ()=>talk('p_elif','Şimdi fırına dokun ve buğdaydan ekmek pişir.',[['Tamam',null]]),
-  ()=>talk('p_elif','Ekmek pişerken siparişlere bak. Köylüler istediklerini yazıyor; teslim edersen altın ve yıldız kazanırsın. Seviye atladıkça yeni binalar açılır.',[['Anladım',()=>{S.tut=9;save();}]])
+  ()=>talk('p_elif',`Ekmek pişerken beklemek istemezsen üretim ekranındaki "Bitir ${GEM}" butonuna dokunup anında bitir. Sana verdiğim elmasları şimdi dene!`,[['Tamam',null]]),
+  ()=>talk('p_elif','Ekmek hazır olunca Siparişler düğmesine bas ve bir siparişi teslim et. Köylüler istediklerini yazıyor; teslim edersen altın ve yıldız kazanırsın.',[['Tamam',null]]),
+  ()=>talk('p_elif','Şimdi köy büyüsün! Aşağıdaki İnşa Et düğmesine dokun, beğendiğin bir binayı seç ve yerini haritada göster.',[['Tamam',null]]),
+  ()=>talk('p_elif','Son adım: herhangi bir binaya dokunup Yükselt butonuna bas. Seviye atan binalar daha çok ürün ve yeni özellikler kazandırır.',[['Tamam',null]]),
+  ()=>talk('p_elif','Harikasın! Artık köyü büyütmenin bütün temel yollarını biliyorsun. Gerisini keşfetmek sana kalsın.',[['Anladım',()=>{S.tut=99;save();}]])
 ];
-function showTut(){if(S.tut<TUT.length)TUT[S.tut]();}
+let tutTimer=null;
+function showTut(){
+  clearTimeout(tutTimer);
+  if(DEMO||S.tut>=TUT.length||S.tut>=99)return;
+  if($('sheet').classList.contains('on')||$('nameBox').classList.contains('on')){tutTimer=setTimeout(showTut,3000);return;}
+  TUT[S.tut]();
+  tutTimer=setTimeout(()=>{if(S.tut<TUT.length&&S.tut<99)showTut();},13000);
+}
 function tutEvent(ev){
-  const map={plant:[1,2],harvest:[2,3],produce:[3,4]};const m=map[ev];
-  return;
+  const map={plant:[1,2],harvest:[2,3],produce:[3,4],skip:[4,5],order:[5,6],build:[6,7],upgrade:[7,8]};const m=map[ev];
+  if(m&&S.tut===m[0]){S.tut=m[1];save();showTut();}
 }
 
 /* ================= SHEETS ================= */
@@ -1600,7 +1611,7 @@ function openUpgrade(e){const d=DEF[e.type];
     $('doUp').onclick=()=>{const c2=upCost(e);if(S.lvl<c2.lvl||S.coins<c2.coins||!canTake(c2.items))return;S.coins-=c2.coins;take(c2.items);e.lv=lv(e)+1;e.bounce=now();
       const cc=centerOf(e);for(let i=0;i<8;i++)PUFFS.push({x:cc.x+(Math.random()-.5)*110,y:cc.y-Math.random()*80,t0:now()-Math.random()*700});
       floatText(cc.x,cc.y-120,'Seviye '+e.lv+'!');gainXP(10*e.lv);sfx.fanfare();if(e.type==='barn')S.cap=Math.max(S.cap,barnCap(e));
-      if(has('harbor')&&S.ship.state==='locked')S.ship={state:'here',crates:genCrates(4),back:0};if(has('airport')&&S.plane.state==='locked')S.plane={state:'here',crates:genCrates(6),back:0};S.st.upgrades=(S.st.upgrades||0)+1;closeSheet();questTick();changed();};});}
+      if(has('harbor')&&S.ship.state==='locked')S.ship={state:'here',crates:genCrates(4),back:0};if(has('airport')&&S.plane.state==='locked')S.plane={state:'here',crates:genCrates(6),back:0};S.st.upgrades=(S.st.upgrades||0)+1;closeSheet();tutEvent('upgrade');questTick();changed();};});}
 function bind(sel,fn){$('sBody').querySelectorAll(sel).forEach(b=>b.onclick=()=>fn(b));}
 
 function openPlant(e){
@@ -1612,7 +1623,7 @@ function openPlant(e){
       +`<div class="row"><div class="mid"><div class="t">Boş tarlaların hepsine ek</div><div class="d">Seçtiğin ürün tüm boş tarlalara ekilir.</div></div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${Object.entries(CROPS).filter(([k,c])=>c.lvl<=S.lvl&&cropOK(k)).map(([k])=>`<button class="btn alt" data-all="${k}">${ic(k)} Hepsine</button>`).join('')}</div>`;
     const plant=(f,k)=>{const c=CROPS[k];if(S.coins<c.cost)return false;S.coins-=c.cost;const t=now();f.crop={c:k,start:t,end:t+c.t*1000};return true;};
-    bind('[data-k]',b=>{if(plant(e,b.dataset.k)){closeSheet();changed();}});
+    bind('[data-k]',b=>{if(plant(e,b.dataset.k)){closeSheet();tutEvent('plant');changed();}});
     bind('[data-all]',b=>{let n=0;for(const f of S.ents)if(f.type==='field'&&!f.crop&&plant(f,b.dataset.all))n++;closeSheet();if(n)toast(n+' tarlaya '+ITEMS[b.dataset.all].n.toLowerCase()+' ekildi');changed();});
   },[moveBtn(e)]);
 }
@@ -1633,7 +1644,7 @@ function openProd(e){
     $('sBody').innerHTML=h;if($('skipJ'))$('skipJ').onclick=()=>{skipJob(e);sheetCtx();};
     bind('[data-r]',b=>{const r=RECIPES[b.dataset.r];if(!canTake(r.inp)||e.q.length>=qMax(e))return;take(r.inp);
       const t=now(),st=e.q.length?Math.max(t,e.q[e.q.length-1].end):t;e.q.push({r:b.dataset.r,start:st,end:st+Math.round(r.t*1000*speedMul()*lvSpeed(e))});
-      changed();});
+      tutEvent('produce');changed();});
   },isHarbor(e)?heads(e,['Gemi',()=>{closeSheet();openShip();}]):e.type==='cayocagi'?heads(e,['Tavla',()=>{closeSheet();openTavla();}]):heads(e));
 }
 function openInfo(e,text){const d=DEF[e.type];openSheet(d.name,()=>{$('sBody').innerHTML=`<p class="sub">${text}</p>${d.pop?`<div class="stat"><span>Nüfus katkısı</span><span>+${d.pop}</span></div>`:''}<div class="stat"><span>Mutluluk bonusu</span><span>+%${joy()}</span></div><div class="stat"><span>Bina seviyesi</span><span>${maxLv(e)>5?'Sv. '+lv(e)+' / '+maxLv(e):'★'.repeat(lv(e))+'☆'.repeat(MAXLV-lv(e))}</span></div>`;},heads(e));}
@@ -1708,7 +1719,7 @@ function openOrders(){
       <div class="items">${Object.entries(o.items).map(([k,q])=>`<span class="it" ${have(k)<q?`data-need="${k}" role="button"`:''}>${ic(k)}<em class="${have(k)<q?'miss':''}">${have(k)}/${q}</em></span>`).join('')}</div>
       <div class="foot"><span class="reward">${COIN} ${o.coins} ⭐ ${o.xp}</span><span><button class="btn ghost" data-skip="${i}">Değiştir</button>
       <button class="btn ${ok?'':'dis'}" data-ok="${i}" aria-disabled="${!ok}">Teslim et</button></span></div></div>`;}).join('')+'</div>';
-    bind('[data-ok]',b=>{const i=+b.dataset.ok,o=S.orders[i];if(!canTake(o.items)){const m=Object.entries(o.items).filter(([k,q])=>have(k)<q).map(([k,q])=>(q-have(k))+' '+ITEMS[k].n.toLocaleLowerCase('tr'));toast('Eksik: '+m.join(', ')+'. Kırmızı ürüne dokun, seni üretildiği yere götüreyim.');return;}take(o.items);S.coins+=o.coins;S.st.orders++;sfx.coin();S.orders[i]=genOrder();heliGo();questTick();toast(PEOPLE[o.who]+': Teşekkürler! +'+o.coins+' altın · +'+o.xp+' ⭐');gainXP(o.xp);changed();});
+    bind('[data-ok]',b=>{const i=+b.dataset.ok,o=S.orders[i];if(!canTake(o.items)){const m=Object.entries(o.items).filter(([k,q])=>have(k)<q).map(([k,q])=>(q-have(k))+' '+ITEMS[k].n.toLocaleLowerCase('tr'));toast('Eksik: '+m.join(', ')+'. Kırmızı ürüne dokun, seni üretildiği yere götüreyim.');return;}take(o.items);S.coins+=o.coins;S.st.orders++;sfx.coin();S.orders[i]=genOrder();heliGo();questTick();toast(PEOPLE[o.who]+': Teşekkürler! +'+o.coins+' altın · +'+o.xp+' ⭐');gainXP(o.xp);tutEvent('order');changed();});
     bind('[data-skip]',b=>{S.orders[+b.dataset.skip]=genOrder();changed();});
     while(S.orders.length<orderSlots())S.orders.push(genOrder());
   });
@@ -1781,7 +1792,7 @@ $('pYes').onclick=()=>{if(!place)return;const d=DEF[place.type];
   if(e.type==='harbor'&&S.ship.state==='locked')S.ship={state:'here',crates:genCrates(4),back:0};
   if(e.type==='airport'&&S.plane.state==='locked')S.plane={state:'here',crates:genCrates(6),back:0};
   if(d.kind==='helipad')while(S.orders.length<orderSlots())S.orders.push(genOrder());
-  questTick();changed();};
+  tutEvent('build');questTick();changed();};
 $('bM3').onclick=()=>openM3();$('bShop').onclick=openShop;$('bOrders').onclick=openOrders;$('bBarn').onclick=()=>openBarn(null);
 $('popPill').onclick=()=>{const h=S.ents.find(e=>e.type==='hall');if(h)openHall(h);};
 
@@ -2114,7 +2125,7 @@ function watchAd(done){const o=document.createElement('div');o.className='adov';
 function missingGemCost(items,coins){let g=0;for(const[k,q]of Object.entries(items||{})){const m=Math.max(0,q-have(k));if(m)g+=m*(TOOLS.includes(k)?(k==='usta'?15:3):Math.max(1,Math.ceil((ITEMS[k].v||5)/15)));}
   g+=Math.ceil(Math.max(0,(coins||0)-S.coins)/100);return g;}
 function fillMissing(items,coins){const g=missingGemCost(items,coins);if(!g||!spendGems(g))return false;for(const[k,q]of Object.entries(items||{})){const m=Math.max(0,q-have(k));if(m)addItem(k,m);}S.coins=Math.max(S.coins,coins||0);return true;}
-function skipJob(e){const t=now(),j=curJob(e,t);if(!j)return;const left=j.end-t,c=skipCost(left);if(!spendGems(c))return;for(const k of e.q)if(k.end>=j.end){k.end-=left;if(k.start)k.start-=left;}sfx.pop();changed();}
+function skipJob(e){const t=now(),j=curJob(e,t);if(!j)return;const left=j.end-t,c=skipCost(left);if(!spendGems(c))return;for(const k of e.q)if(k.end>=j.end){k.end-=left;if(k.start)k.start-=left;}sfx.pop();tutEvent('skip');changed();}
 
 /* ================= BULMACA: Şekerci · 450 bölüm ================= */
 const M3={N:8,maxLv:450,busy:false,g:null,lv:1,candyImg:[],icons:['i_wheat','i_corn','i_carrot','i_egg','i_milk','i_simit']};
@@ -2778,7 +2789,7 @@ function askTownName(after,rename){const box=$('nameBox'),inp=$('townIn');$('nam
   inp.onkeydown=ev=>{if(ev.key==='Enter')$('townOk').click();};
   box.classList.add('on');setTimeout(()=>inp.focus(),300);}
 setTimeout(()=>{if(!DEMO){unlockTransport();if(S.xp>=xpNeed(S.lvl))gainXP(0);}},2500);
-setTimeout(()=>{if(DEMO)return;const go0=()=>{if(S.quest.i===0&&!S.quest.seen){S.quest.seen=true;showQuestTalk();}};const go=()=>checkDaily(()=>{go0();eventNotice();});if(!S.townName)askTownName(go);else go();},700);
+setTimeout(()=>{if(DEMO)return;const go0=()=>{if(S.tut===0){showTut();}else if(S.quest.i===0&&!S.quest.seen){S.quest.seen=true;showQuestTalk();}};const go=()=>checkDaily(()=>{go0();eventNotice();});if(!S.townName)askTownName(go);else go();},700);
 requestAnimationFrame(draw);
 window.__S=()=>S;
 
