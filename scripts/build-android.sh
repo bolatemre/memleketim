@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Köyden Şehre: Google Play için imzalı AAB üretir. Çıktı: dist/koyden-sehre-<numara>.aab
+# Köyden Şehre: Google Play için imzalı AAB ve telefona kurulabilen APK üretir. Çıktı: dist/
 set -euo pipefail
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 TMP="${RUNNER_TEMP:-/tmp}"
@@ -28,10 +28,10 @@ grep -n "APPLICATION_ID" android/app/src/main/AndroidManifest.xml
 grep -E "versionCode|versionName" "$G"
 echo "::endgroup::"
 
-echo "::group::AAB derle"
+echo "::group::AAB ve APK derle"
 cd android
 chmod +x gradlew
-./gradlew --no-daemon bundleRelease
+./gradlew --no-daemon bundleRelease assembleRelease
 echo "::endgroup::"
 
 echo "::group::İmzala"
@@ -42,6 +42,12 @@ jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore "$KS" -storepass "$
 jarsigner -verify "$AAB" | tail -1
 mkdir -p ../dist
 cp "$AAB" "../dist/koyden-sehre-${BUILD_NUMBER}.aab"
+# Telefona doğrudan kurulabilen APK (aynı anahtarla imzalı)
+BT=$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/* | sort -V | tail -1)
+APK_IN=app/build/outputs/apk/release/app-release-unsigned.apk
+"$BT/zipalign" -p -f 4 "$APK_IN" "$TMP/aligned.apk"
+"$BT/apksigner" sign --ks "$KS" --ks-pass "pass:$KS_PASS" --key-pass "pass:$KS_PASS" --ks-key-alias "$KS_ALIAS" --out "../dist/koyden-sehre-${BUILD_NUMBER}.apk" "$TMP/aligned.apk"
+"$BT/apksigner" verify "../dist/koyden-sehre-${BUILD_NUMBER}.apk" && echo "APK imzası doğrulandı"
 rm -f "$KS" "$TMP/android.env"
 echo "::endgroup::"
-echo "✅ AAB hazır: dist/koyden-sehre-${BUILD_NUMBER}.aab"
+echo "✅ Hazır: dist/koyden-sehre-${BUILD_NUMBER}.aab ve .apk"
