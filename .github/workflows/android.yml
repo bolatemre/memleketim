@@ -2,8 +2,7 @@ name: Android AAB + APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
+  
 
 jobs:
   android:
