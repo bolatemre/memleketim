@@ -1509,9 +1509,7 @@ const TUT=[
   ()=>talk('p_elif','Şimdi fırına dokun ve buğdaydan ekmek pişir.',[['Tamam',null]]),
   ()=>talk('p_elif',`Ekmek pişerken beklemek istemezsen üretim ekranındaki "Bitir ${GEM}" butonuna dokunup anında bitir. Sana verdiğim elmasları şimdi dene!`,[['Tamam',null]]),
   ()=>talk('p_elif','Ekmek hazır olunca Siparişler düğmesine bas ve bir siparişi teslim et. Köylüler istediklerini yazıyor; teslim edersen altın ve yıldız kazanırsın.',[['Tamam',null]]),
-  ()=>talk('p_elif','Şimdi köy büyüsün! Aşağıdaki İnşa Et düğmesine dokun, beğendiğin bir binayı seç ve yerini haritada göster.',[['Tamam',null]]),
-  ()=>talk('p_elif','Son adım: herhangi bir binaya dokunup Yükselt butonuna bas. Seviye atan binalar daha çok ürün ve yeni özellikler kazandırır.',[['Tamam',null]]),
-  ()=>talk('p_elif','Harikasın! Artık köyü büyütmenin bütün temel yollarını biliyorsun. Gerisini keşfetmek sana kalsın.',[['Anladım',()=>{S.tut=99;save();}]])
+  ()=>talk('p_elif','Harikasın! Temelleri öğrendin. Bir de sol üstteki görev kutusuna bak; orada hep bir sonraki hedefin yazar, dokununca detayını görürsün. Seviye atladıkça yeni binalar ve yükseltmeler de açılacak. Gerisi sana kalsın!',[['Anladım',()=>{S.tut=99;save();}]])
 ];
 let tutTimer=null;
 function showTut(){
@@ -1522,7 +1520,7 @@ function showTut(){
   tutTimer=setTimeout(()=>{if(S.tut<TUT.length&&S.tut<99)showTut();},13000);
 }
 function tutEvent(ev){
-  const map={plant:[1,2],harvest:[2,3],produce:[3,4],skip:[4,5],order:[5,6],build:[6,7],upgrade:[7,8]};const m=map[ev];
+  const map={plant:[1,2],harvest:[2,3],produce:[3,4],skip:[4,5],order:[5,6]};const m=map[ev];
   if(m&&S.tut===m[0]){S.tut=m[1];save();showTut();}
 }
 
@@ -1611,7 +1609,7 @@ function openUpgrade(e){const d=DEF[e.type];
     $('doUp').onclick=()=>{const c2=upCost(e);if(S.lvl<c2.lvl||S.coins<c2.coins||!canTake(c2.items))return;S.coins-=c2.coins;take(c2.items);e.lv=lv(e)+1;e.bounce=now();
       const cc=centerOf(e);for(let i=0;i<8;i++)PUFFS.push({x:cc.x+(Math.random()-.5)*110,y:cc.y-Math.random()*80,t0:now()-Math.random()*700});
       floatText(cc.x,cc.y-120,'Seviye '+e.lv+'!');gainXP(10*e.lv);sfx.fanfare();if(e.type==='barn')S.cap=Math.max(S.cap,barnCap(e));
-      if(has('harbor')&&S.ship.state==='locked')S.ship={state:'here',crates:genCrates(4),back:0};if(has('airport')&&S.plane.state==='locked')S.plane={state:'here',crates:genCrates(6),back:0};S.st.upgrades=(S.st.upgrades||0)+1;closeSheet();tutEvent('upgrade');questTick();changed();};});}
+      if(has('harbor')&&S.ship.state==='locked')S.ship={state:'here',crates:genCrates(4),back:0};if(has('airport')&&S.plane.state==='locked')S.plane={state:'here',crates:genCrates(6),back:0};S.st.upgrades=(S.st.upgrades||0)+1;closeSheet();questTick();changed();};});}
 function bind(sel,fn){$('sBody').querySelectorAll(sel).forEach(b=>b.onclick=()=>fn(b));}
 
 function openPlant(e){
@@ -1792,7 +1790,7 @@ $('pYes').onclick=()=>{if(!place)return;const d=DEF[place.type];
   if(e.type==='harbor'&&S.ship.state==='locked')S.ship={state:'here',crates:genCrates(4),back:0};
   if(e.type==='airport'&&S.plane.state==='locked')S.plane={state:'here',crates:genCrates(6),back:0};
   if(d.kind==='helipad')while(S.orders.length<orderSlots())S.orders.push(genOrder());
-  tutEvent('build');questTick();changed();};
+  questTick();changed();};
 $('bM3').onclick=()=>openM3();$('bShop').onclick=openShop;$('bOrders').onclick=openOrders;$('bBarn').onclick=()=>openBarn(null);
 $('popPill').onclick=()=>{const h=S.ents.find(e=>e.type==='hall');if(h)openHall(h);};
 
