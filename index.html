@@ -1363,7 +1363,7 @@ const overlayOpen=()=>['m3','lig','pen'].some(id=>{const el=document.getElementB
 function draw(){requestAnimationFrame(draw);if(document.hidden||overlayOpen())return;
   const pn=performance.now();if(frameLast){frameAvg=frameAvg*.97+Math.min(100,pn-frameLast)*.03;if(frameAvg>36&&DPR_CAP>1.25&&pn-(draw.adj||0)>4000){DPR_CAP-=.25;draw.adj=pn;resize();}}frameLast=pn;
   try{drawFrame();}catch(e){if(drawErr++<3)console.warn('çizim hatası',e);}}
-function drawZoomLabels(){if(cam.z>.62)return;const k=1/cam.z,a=Math.min(1,(.62-cam.z)/.1);
+function drawZoomLabels(){if(cam.z>.5)return;const k=1/cam.z,a=Math.min(1,(.5-cam.z)/.08);
   const vx0=cam.x-W/2/cam.z,vx1=cam.x+W/2/cam.z,vy0=cam.y-H/2/cam.z,vy1=cam.y+H/2/cam.z;ctx.save();ctx.globalAlpha=a;
   for(const e of S.ents){const d=DEF[e.type];if(!d||!d.looks||e.type==='cottage')continue;const r=rectOf(e);if(!r||r.x>vx1||r.x+r.w<vx0||r.y>vy1||r.y+r.h<vy0)continue;
     const out=d.rl?RECIPES[Object.keys(d.rl)[0]]&&RECIPES[Object.keys(d.rl)[0]].out:null,im=out?IM['i_'+out]:null,nm=d.name,lvT=' '+lv(e);
@@ -1540,7 +1540,7 @@ let sheetCtx=null,sheetTimer=null;
 function openSheet(title,render,head){
   $('sTitle').textContent=title;$('sHead').innerHTML='';
   if(head){for(const[label,fn]of head){const b=document.createElement('button');b.className='btn alt';b.textContent=label;b.onclick=fn;$('sHead').appendChild(b);}}
-  sheetCtx=render;render();$('veil').classList.add('on');$('sheet').classList.add('on');hideTalk();
+  sheetCtx=render;render();$('veil').classList.add('on');$('sheet').classList.add('on');hideTalk();sheetOpenedAt=performance.now();
   clearInterval(sheetTimer);sheetSame=0;sheetTimer=setInterval(()=>{if(sheetCtx&&!sheetBusy()&&sheetSame<2)refreshSheet(true);},700);
 }
 // Kaydırılabilir listelerde parmak biraz kayınca iPhone tıklamayı iptal ediyordu: kısa dokunuşu kendimiz tıklamaya çeviriyoruz
@@ -1571,7 +1571,9 @@ for(const id of['sheet','sBody']){const el=$(id);
 addEventListener('pointerup',()=>{if(touching){touching=false;touchT=performance.now();}},true);
 addEventListener('pointercancel',()=>{touching=false;touchT=performance.now();},true);
 function closeSheet(){$('veil').classList.remove('on');$('sheet').classList.remove('on');sheetCtx=null;clearInterval(sheetTimer);}
-$('sClose').onclick=closeSheet;$('veil').onclick=closeSheet;
+// Telefonda binaya dokununca pencere açılıyor, aynı dokunuşun ardından gelen tıklama perdeye düşüp pencereyi hemen kapatıyordu
+let sheetOpenedAt=0;
+$('sClose').onclick=closeSheet;$('veil').onclick=()=>{if(performance.now()-sheetOpenedAt<500)return;closeSheet();};
 $('sBody').addEventListener('click',ev=>{const n=ev.target.closest('[data-need]');if(n)goProducer(n.dataset.need);});
 function panTo(e,cb){const c=centerOf(e),sx=cam.x,sy=cam.y,t0=performance.now();cam.z=Math.max(cam.z,.85);
   const go=()=>{const k=Math.min(1,(performance.now()-t0)/650),q=1-(1-k)*(1-k);cam.x=sx+(c.x-sx)*q;cam.y=sy+(c.y-sy)*q;if(k<1)requestAnimationFrame(go);else{e.bounce=now();cb&&cb();}};go();}
