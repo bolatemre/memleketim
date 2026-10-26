@@ -313,6 +313,8 @@ button,.btn,.btn-round,[role=button],[data-l],[data-buy]{touch-action:manipulati
 #sTitle{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(17px,5vw,24px)}
 .headbtns{display:flex;gap:5px;flex-shrink:0}.headbtns .btn{padding:7px 10px;font-size:14px;white-space:nowrap}
 .stat{display:flex;justify-content:space-between;background:var(--chip);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-weight:600}
+/* tablet ve büyük ekranlar: arayüz ekranla orantılı büyüsün */
+@media (min-width:700px) and (min-height:700px){.hud,.dock,.talk,.toast,.namebox,.placebar,#placeBar{zoom:1.45}.sheet{zoom:1.3}}
 </style>
 </head>
 <body>
@@ -582,7 +584,8 @@ DEF.cowpen.pen='a_cow';DEF.coop.pen='a_chicken';DEF.sheepfold.pen='a_sheep';DEF.
 DEF.cottage.coins=12;
 const MAXL=15;
 const lookIdx=e=>{const d=DEF[e.type];return d&&d.looks?Math.min(d.looks.length-1,Math.floor((lv(e)-1)*d.looks.length/MAXL)):0;};
-function imgOf(e){if(e.type==='deco'||e.type==='obstacle')return e.img;if(e.type==='ruin')return LM[e.lm].img;const d=DEF[e.type];
+function imgOf(e){const k=imgOf0(e);if(k&&!IM[k])loadImg(k);return k;}
+function imgOf0(e){if(e.type==='deco'||e.type==='obstacle')return e.img;if(e.type==='ruin')return LM[e.lm].img;const d=DEF[e.type];
   if(d.looks){const w=lookIdx(e);let fb=null;for(let i=w;i>=0;i--){const k=d.looks[i];if(!IMG_SRC[k])continue;if(IM[k])return k;loadImg(k);if(!fb)fb=k;}
     for(let i=w+1;i<d.looks.length;i++){const k=d.looks[i];if(IM[k])return k;}return fb||d.img;}return d.img;}
 const OLDMAP={house2:['cottage',4],townhouse:['cottage',6],apart1:['cottage',8],apartment:['cottage',10],skyscraper:['cottage',12],ecotower:['cottage',14],
@@ -622,7 +625,7 @@ const GAME_NAME='Köyden Şehre';
 let S;
 function fresh(){
   const t=Date.now();
-  const s={coins:200,xp:0,lvl:1,inv:{wheat:6,axe:1},cap:80,capLvl:0,nextId:1,orders:[],tut:0,quest:{i:0,base:null},st:{harvest:{},made:{},orders:0,trains:0,cleared:0},era:1,pier:false,
+  const s={coins:200,xp:0,lvl:1,inv:{wheat:6,axe:1},cap:150,capLvl:0,nextId:1,orders:[],tut:0,quest:{i:0,base:null},st:{harvest:{},made:{},orders:0,trains:0,cleared:0},era:1,pier:false,
     blocks:['0,0','0,1','1,0','1,1'],bs:8,train:{state:'locked',wagons:[],back:0},
     ents:[{type:'hall',gx:12,gy:9},{type:'barn',gx:8,gy:9},{type:'bakery',gx:9,gy:13},{type:'cottage',gx:6,gy:13,last:t},
       {type:'station',gx:15,gy:13},
@@ -674,7 +677,7 @@ const count=type=>{const[f,m]=famOf(type);return S.ents.filter(e=>e.type===f&&lv
 const lv=e=>e.lv||1,MAXLV=5;
 const maxLv=e=>DEF[e.type]&&DEF[e.type].looks?MAXL:MAXLV;
 const UPK=['prod','house','service','hall','market','helipad','airport','barn'];
-const barnCap=e=>80+(lv(e)-1)*40;
+const barnCap=e=>150+(lv(e)-1)*60; // ambar daha geniş başlar, her seviyede +60
 function popTotal(){return S.ents.reduce((a,e)=>a+Math.round((DEF[e.type].pop||0)*(1+.25*(lv(e)-1))),0);}
 const has=k=>{const[f,m]=famOf(k);return S.ents.some(e=>e.type===f&&lv(e)>=m);};
 function joy(){return S.ents.reduce((a,e)=>a+Math.round((DEF[e.type].joy||0)*(1+.3*(lv(e)-1))),0)+(showOn()?20:0)-(cityC.v&&!cityC.v.health?15:0);}
@@ -950,7 +953,7 @@ const toGrid=(wx,wy)=>({gx:(wy/HH+wx/HW)/2,gy:(wy/HH-wx/HW)/2});
 const cv=$('c'),ctx=cv.getContext('2d');
 let W=0,H=0,DPR=1;
 const cam={x:0,y:768,z:.55};
-function resize(){DPR=Math.min(DPR_CAP,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;}
+function resize(){W=innerWidth;H=innerHeight;DPR=Math.min(DPR_CAP,devicePixelRatio||1,Math.sqrt(2.3e6/(W*H)));DPR=Math.max(1,DPR);cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
 addEventListener('resize',resize);
 const s2w=(sx,sy)=>({x:(sx-W/2)/cam.z+cam.x,y:(sy-H/2)/cam.z+cam.y});
 const w2s=(wx,wy)=>({x:(wx-cam.x)*cam.z+W/2,y:(wy-cam.y)*cam.z+H/2});
@@ -1214,8 +1217,9 @@ function drawNight(t){
   if(ss>0){ctx.globalCompositeOperation='soft-light';ctx.fillStyle=`rgba(255,110,30,${.8*ss})`;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';}
   ctx.restore();
   if(d<=0)return;
-  const cw=cv.width,ch=cv.height;if(!NC){NC=document.createElement('canvas');NX=NC.getContext('2d');}if(NC.width!==cw||NC.height!==ch){NC.width=cw;NC.height=ch;}
-  const k=Math.max(0,Math.min(1,(d-.08)/.3)),wt=ctx.getTransform();
+  // karanlık katmanı yarı çözünürlükte (yumuşak ışık için yeterli, telefonu yormaz)
+  const cw=Math.ceil(cv.width/2),ch=Math.ceil(cv.height/2);if(!NC){NC=document.createElement('canvas');NX=NC.getContext('2d');}if(NC.width!==cw||NC.height!==ch){NC.width=cw;NC.height=ch;}
+  const k=Math.max(0,Math.min(1,(d-.08)/.3)),wt0=ctx.getTransform(),wt=new DOMMatrix([wt0.a/2,wt0.b/2,wt0.c/2,wt0.d/2,wt0.e/2,wt0.f/2]);
   NX.setTransform(1,0,0,1,0,0);NX.globalCompositeOperation='source-over';NX.clearRect(0,0,cw,ch);NX.fillStyle=`rgba(12,20,54,${d})`;NX.fillRect(0,0,cw,ch);
   if(k>0){NX.setTransform(wt);NX.globalCompositeOperation='destination-out';
     const hole=(x,y,rx,ry,a)=>{const g=NX.createRadialGradient(x,y,0,x,y,rx);g.addColorStop(0,`rgba(0,0,0,${a})`);g.addColorStop(.55,`rgba(0,0,0,${a*.55})`);g.addColorStop(1,'rgba(0,0,0,0)');
@@ -1223,7 +1227,7 @@ function drawNight(t){
     for(const l of lamps()){const p=iso(l.gx,l.gy);hole(p.x,p.y-6,135,95,.92*k);}
     for(const e of S.ents){const f=LIT[DEF[e.type].kind];if(!f||!cellUnlocked(e.gx,e.gy))continue;const r=rectOf(e);if(!r)continue;hole(r.x+r.w*.5,r.y+r.h*.62,r.w*.42,r.w*.3,.55*k*f);}
     for(const v of VILL){const p=iso(v.cx,v.cy);hole(p.x,p.y-12,26,20,.25*k);}}
-  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(NC,0,0);ctx.restore();
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(NC,0,0,cv.width,cv.height);ctx.restore();
   if(k<=0)return;
   ctx.save();ctx.globalCompositeOperation='lighter';
   for(const l of lamps()){const p=iso(l.gx,l.gy);const g=ctx.createRadialGradient(p.x,p.y-38,2,p.x,p.y-24,95);g.addColorStop(0,`rgba(255,214,120,${.75*k})`);g.addColorStop(.2,`rgba(255,190,90,${.28*k})`);g.addColorStop(1,'rgba(255,170,60,0)');
@@ -1677,7 +1681,7 @@ function openBarn(e){
       (ks.length?`<div class="inv">${ks.map(k=>`<div><b>${ic(k)}</b><span>${ITEMS[k].n}: ${have(k)}</span></div>`).join('')}</div>`:'<p class="sub">Ambar boş.</p>')+
       `<div class="sec">Alet sandığı · sınırsız, ambarda yer kaplamaz</div>`+
       (ts.length?`<div class="inv">${ts.map(k=>`<div><b>${ic(k)}</b><span>${ITEMS[k].n}: ${have(k)}</span></div>`).join('')}</div>`:'<p class="sub">Henüz alet yok.</p>')+
-      `<p class="sub">Ambarı <b>Yükselt</b> ile geliştir: her seviyede +40 yer ve yeni bir görünüş.</p>`;
+      `<p class="sub">Ambarı <b>Yükselt</b> ile geliştir: her seviyede +60 yer ve yeni bir görünüş.</p>`;
   },e?heads(e):null);
 }
 function openHall(e){
@@ -1792,9 +1796,19 @@ function openShop(){
 }
 
 /* ================= PLACEMENT ================= */
-function findSpot(sz,ig){const g=toGrid(cam.x,cam.y);const gx=Math.round(g.gx-sz/2),gy=Math.round(g.gy-sz/2);
-  for(let r=0;r<30;r++)for(let dx=-r;dx<=r;dx++)for(let dy=-r;dy<=r;dy++)if(!occupied(gx+dx,gy+dy,sz,ig))return[gx+dx,gy+dy];return[gx,gy];}
-function startPlace(type){closeSheet();const[gx,gy]=findSpot(DEF[type].size);place={type,gx,gy};barOn();toast('Yer seçmek için haritaya dokun');}
+function findSpot(sz,ig,type){const g=toGrid(cam.x,cam.y);let ax=g.gx-sz/2,ay=g.gy-sz/2;
+  // aynı türden binalar (ev evlerin, tarla tarlaların yanına) varsa onların yanına koy
+  if(type){const d=DEF[type],same=S.ents.filter(e=>e.type===type||(d.kind==='house'&&DEF[e.type].kind==='house'));
+    if(same.length){let best=null,bd=1e9;for(const e of same){const q=(e.gx-ax)**2+(e.gy-ay)**2;if(q<bd){bd=q;best=e;}}ax=best.gx;ay=best.gy;}}
+  const field=type==='field',roadAdj=(x,y)=>{for(let i=-1;i<=sz;i++)if(isRoad(x+i,y-1)||isRoad(x+i,y+sz)||isRoad(x-1,y+i)||isRoad(x+sz,y+i))return true;return false;};
+  let best=null,bs=1e9;const cx=Math.round(ax),cy=Math.round(ay);
+  for(let dx=-14;dx<=14;dx++)for(let dy=-14;dy<=14;dy++){const x=cx+dx,y=cy+dy;if(occupied(x,y,sz,ig))continue;
+    let s=Math.hypot(dx,dy);if(!field&&!roadAdj(x,y))s+=4;if(s<bs){bs=s;best=[x,y];}}
+  if(best)return best;
+  for(let r=0;r<30;r++)for(let dx=-r;dx<=r;dx++)for(let dy=-r;dy<=r;dy++)if(!occupied(cx+dx,cy+dy,sz,ig))return[cx+dx,cy+dy];return[cx,cy];}
+function panToCell(gx,gy,sz){const p=iso(gx+sz/2,gy+sz/2),sx=cam.x,sy=cam.y,ty=p.y-20,t0=performance.now();
+  const go=()=>{const k=Math.min(1,(performance.now()-t0)/500),q=1-(1-k)*(1-k);cam.x=sx+(p.x-sx)*q;cam.y=sy+(ty-sy)*q;if(k<1)requestAnimationFrame(go);};go();}
+function startPlace(type){closeSheet();const sz=DEF[type].size,[gx,gy]=findSpot(sz,null,type);place={type,gx,gy};imgOf({type,gx,gy,lv:1});panToCell(gx,gy,sz);barOn();toast('Yeşil alan uygunsa ✓’ye bas; başka yer için haritaya dokun');}
 function startMove(e){if(e.type==='station'){toast('İstasyon raylara bağlı, taşınamaz');return;}place={type:e.type,gx:e.gx,gy:e.gy,move:e,img:e.img};barOn();toast('Yeni yer için haritaya dokun');}
 function barOn(){$('placeBar').classList.add('on');$('dock').style.visibility='hidden';hideTalk();}
 function endPlace(){place=null;$('placeBar').classList.remove('on');$('dock').style.visibility='';}
@@ -1866,7 +1880,7 @@ function up(ev){if(!ptrs.has(ev.pointerId))return;ptrs.delete(ev.pointerId);if(p
   else if(ptrs.size===1){const p=[...ptrs.values()][0];drag={sx:p.x,sy:p.y,cx:cam.x,cy:cam.y};}}
 cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
 cv.addEventListener('wheel',ev=>{ev.preventDefault();cam.z=clampZ(cam.z*(ev.deltaY<0?1.1:.9));},{passive:false});
-const clampZ=z=>Math.max(.28,Math.min(1.5,z));
+const clampZ=z=>Math.max(.28,Math.min(1.5*Math.max(1,Math.min(1.7,Math.min(W,H)/420)),z));
 function clampCam(){const b=bounds();cam.x=Math.max(b.x0-200,Math.min(b.x1+200,cam.x));cam.y=Math.max(b.y0-200,Math.min(b.y1+200,cam.y));}
 function onTap(sx,sy){
   if(place){const w=s2w(sx,sy),g=toGrid(w.x,w.y),sz=DEF[place.type].size;
@@ -2797,7 +2811,7 @@ function ligBind(){lg$('ligClose').onclick=closeLig;lg$('ligSub').onclick=openSu
 /* ================= START ================= */
 $('hudCoin').src=IMG_SRC.i_coin;$('hudStar').src=IMG_SRC.u_star;$('popImg').src=IMG_SRC.w_farmer;
 document.querySelectorAll('[data-ic]').forEach(i=>i.src=IMG_SRC[i.dataset.ic]);
-m3Bind();penBind();ligBind();adsInit();if($('powPill'))$('powPill').onclick=openPower;load();resize();hud();spawnVillagers();spawnVeh();questUI();
+m3Bind();penBind();ligBind();adsInit();if($('powPill'))$('powPill').onclick=openPower;load();{const bn=S.ents.find(e=>e.type==='barn');S.cap=Math.max(S.cap||0,bn?barnCap(bn):150);}resize();if(!DEMO)cam.z=clampZ(.72*Math.max(1,Math.min(1.7,Math.min(W,H)/420)));hud();spawnVillagers();spawnVeh();questUI();
 $('quest').onclick=openQuest;setInterval(questUI,1500);
 const TOWN_SUG=['Yeşilyurt','Akpınar','Karaağaç','Çamlıca','Güzelyalı','Kocatepe','Sarıçiçek','Bereketli'];
 function askTownName(after,rename){const box=$('nameBox'),inp=$('townIn');$('nameTitle').textContent=rename?'Köyün yeni adı':'Köyüne bir isim ver';
