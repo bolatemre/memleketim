@@ -27,6 +27,13 @@ def scene(S):
     return im.convert('RGB')
 os.makedirs('assets', exist_ok=True)
 scene(1024).save('assets/icon-only.png')
+# Android uyarlanabilir ikon (8.0+): tüm resim arka plan katmanında, görünen alana (orta %66) tam oturur;
+# kenarlar aynı resmin bulanık büyütülmüşüyle dolar. Ön katman boş (şeffaf).
+ic = scene(1024)
+bg = ic.resize((1536, 1536), Image.LANCZOS).filter(ImageFilter.GaussianBlur(24)).crop((256, 256, 1280, 1280))
+inner = 704; bg.paste(ic.resize((inner, inner), Image.LANCZOS), ((1024-inner)//2, (1024-inner)//2))
+bg.save('assets/icon-background.png')
+Image.new('RGBA', (1024, 1024), (0, 0, 0, 0)).save('assets/icon-foreground.png')
 sp = scene(1366).resize((2732, 2732), Image.LANCZOS)
 sp.save('assets/splash.png'); sp.save('assets/splash-dark.png')
 print('ikon ve açılış ekranı hazır')
