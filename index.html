@@ -784,10 +784,16 @@ const sfx={
 };
 // Gizli kodlar: sadece kodu bilen kullanabilir, cihaz başına bir kez
 async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s.trim().toUpperCase()));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
-const CODES={'cb0eb6d71ed05e4ccd47e79a55891e6280ef9625aa3e7770fd9bf9daa35a8d72':{lvl:22,coins:30000,gems:150,items:{usta:10,nails:40,plank:30,steel:20,gear:10},msg:'Hoş geldin geri! 22. seviyeden devam.'}};
-async function redeemCode(c){if(!c)return;S.codes=S.codes||[];const h=await sha(c),g=CODES[h];if(!g){toast('Kod geçersiz');return;}if(S.codes.includes(h)){toast('Bu kod bu cihazda zaten kullanıldı');return;}
-  S.codes.push(h);if(g.lvl&&S.lvl<g.lvl){S.lvl=g.lvl;S.xp=0;}S.coins+=g.coins||0;S.gems=(S.gems||0)+(g.gems||0);for(const[k,q]of Object.entries(g.items||{}))addItem(k,q);
-  sfx.fanfare();toast(g.msg);closeSheet();changed();}
+const CODES={'cb0eb6d71ed05e4ccd47e79a55891e6280ef9625aa3e7770fd9bf9daa35a8d72':{lvl:22,story:58,coins:30000,gems:150,items:{usta:10,nails:40,plank:30,steel:20,gear:10},msg:'Hoş geldin geri! 22. seviye: hikâye ve harita da açıldı.'}};
+function syncStoryTo(idx){// hikâyeyi verilen göreve kadar ilerlet: bölgeleri aç, etkileri uygula
+  for(let i=S.quest.i;i<Math.min(idx,STORY.length);i++){const q=STORY[i];
+    for(const g of q.goals||[])if(g.t==='block'&&!S.blocks.includes(g.b)){S.blocks.push(g.b);try{seedBlock(g.b,false);}catch(e){}}
+    if(q.fx&&EFFECTS[q.fx])try{EFFECTS[q.fx]();}catch(e){}}
+  if(S.quest.i<idx){S.quest.i=idx;S.quest.gen=null;startQuest(false);}}
+async function redeemCode(c){if(!c)return;S.codes=S.codes||[];const h=await sha(c),g=CODES[h];if(!g){toast('Kod geçersiz');return;}
+  if(S.codes.includes(h)){if(g.story&&S.quest.i<g.story){syncStoryTo(g.story);S.dev=true;toast('Hikâye ve harita 22. seviyeye göre açıldı.');closeSheet();changed();questUI();return;}toast('Bu kod bu cihazda zaten kullanıldı');return;}
+  S.codes.push(h);S.dev=true;if(g.story)syncStoryTo(g.story);if(g.lvl&&S.lvl<g.lvl){S.lvl=g.lvl;S.xp=0;}S.coins+=g.coins||0;S.gems=(S.gems||0)+(g.gems||0);for(const[k,q]of Object.entries(g.items||{}))addItem(k,q);
+  sfx.fanfare();toast(g.msg);closeSheet();changed();questUI();}
 function setAudio(k,v){SND.on[k]=v;saveAudio();if(SND.ctx){if(k==='music')SND.mus.gain.value=v?.55:0;else SND.fx.gain.value=v?1:0;}soundPill();}
 function soundPill(){const el=$('sndPill');if(el)el.textContent=SND.on.music||SND.on.sfx?'🔊':'🔇';}
 function openSound(){openSheet('Ses',()=>{$('sBody').innerHTML=`<div class="row"><div class="mid"><div class="t">Müzik</div><div class="d">Hicaz makamında bağlama ezgisi</div></div><button class="btn ${SND.on.music?'':'alt'}" id="tMus">${SND.on.music?'Açık':'Kapalı'}</button></div>
@@ -1346,6 +1352,15 @@ const overlayOpen=()=>['m3','lig','pen'].some(id=>{const el=document.getElementB
 function draw(){requestAnimationFrame(draw);if(document.hidden||overlayOpen())return;
   const pn=performance.now();if(frameLast){frameAvg=frameAvg*.97+Math.min(100,pn-frameLast)*.03;if(frameAvg>36&&DPR_CAP>1.25&&pn-(draw.adj||0)>4000){DPR_CAP-=.25;draw.adj=pn;resize();}}frameLast=pn;
   try{drawFrame();}catch(e){if(drawErr++<3)console.warn('çizim hatası',e);}}
+function drawZoomLabels(){if(cam.z>.72)return;const k=1/cam.z,a=Math.min(1,(.72-cam.z)/.12);
+  const vx0=cam.x-W/2/cam.z,vx1=cam.x+W/2/cam.z,vy0=cam.y-H/2/cam.z,vy1=cam.y+H/2/cam.z;ctx.save();ctx.globalAlpha=a;
+  for(const e of S.ents){const d=DEF[e.type];if(!d||!d.looks||e.type==='cottage')continue;const r=rectOf(e);if(!r||r.x>vx1||r.x+r.w<vx0||r.y>vy1||r.y+r.h<vy0)continue;
+    const out=d.rl?RECIPES[Object.keys(d.rl)[0]]&&RECIPES[Object.keys(d.rl)[0]].out:null,im=out?IM['i_'+out]:null,nm=d.name,lvT=' '+lv(e);
+    ctx.font=`700 ${13*k}px Fredoka,sans-serif`;const tn=ctx.measureText(nm).width,tl=ctx.measureText(lvT).width,tw=tn+tl,pw=tw+(im?26*k:0)+16*k,ph=24*k,x=r.x+r.w/2-pw/2,y=r.y+r.h*.18-ph;
+    ctx.fillStyle='rgba(40,25,10,.78)';ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,pw,ph,ph/2):ctx.rect(x,y,pw,ph);ctx.fill();
+    if(im)ctx.drawImage(im,x+6*k,y+3*k,18*k,18*k);ctx.fillStyle='#fff';ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillText(nm,x+(im?28*k:8*k),y+ph/2+k);
+    ctx.fillStyle='#ffd23a';ctx.fillText(lvT,x+(im?28*k:8*k)+tn,y+ph/2+k);}
+  ctx.restore();}
 function drawFrame(){
   const t=now();
   ctx.setTransform(DPR*cam.z,0,0,DPR*cam.z,DPR*(W/2-cam.x*cam.z),DPR*(H/2-cam.y*cam.z));
@@ -1385,7 +1400,7 @@ function drawFrame(){
         if(lv(e)>1){const x=r.x+r.w*.18,y=r.y+r.h*.3;ctx.fillStyle='#ffcf3a';star(x,y,15);ctx.fillStyle='#7a4a00';ctx.font='700 13px Fredoka,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lv(e),x,y+1);}}
     }
   }
-  drawPuffs(t);drawEventDeco(t);drawSky(t);drawQArrow(t);QARROW=null;
+  drawZoomLabels();drawPuffs(t);drawEventDeco(t);drawSky(t);drawQArrow(t);QARROW=null;
   drawNight(t);drawEzan(t);drawWeather(t);
   for(const e of S.ents){if(DEF[e.type].kind==='prod'||DEF[e.type].kind==='house')drawBubble(e,t);}
   drawFloats(t);
@@ -1537,7 +1552,15 @@ addEventListener('pointerup',()=>{if(touching){touching=false;touchT=performance
 addEventListener('pointercancel',()=>{touching=false;touchT=performance.now();},true);
 function closeSheet(){$('veil').classList.remove('on');$('sheet').classList.remove('on');sheetCtx=null;clearInterval(sheetTimer);}
 $('sClose').onclick=closeSheet;$('veil').onclick=closeSheet;
-$('sBody').addEventListener('click',ev=>{const n=ev.target.closest('[data-need]');if(n)toast(sourceOf(n.dataset.need));});
+$('sBody').addEventListener('click',ev=>{const n=ev.target.closest('[data-need]');if(n)goProducer(n.dataset.need);});
+function panTo(e,cb){const c=centerOf(e),sx=cam.x,sy=cam.y,t0=performance.now();cam.z=Math.max(cam.z,.85);
+  const go=()=>{const k=Math.min(1,(performance.now()-t0)/650),q=1-(1-k)*(1-k);cam.x=sx+(c.x-sx)*q;cam.y=sy+(c.y-sy)*q;if(k<1)requestAnimationFrame(go);else{e.bounce=now();cb&&cb();}};go();}
+function goProducer(k){let e=null;
+  if(CROPS[k])e=S.ents.find(x=>x.type==='field');
+  else{const types=Object.keys(DEF).filter(b=>DEF[b].recipes&&DEF[b].recipes.includes(k));e=S.ents.find(x=>types.includes(x.type));
+    if(!e&&types.length){closeSheet();toast(`${ITEMS[k].n} için önce ${DEF[types[0]].name} kurmalısın.`);openShop();return;}}
+  if(!e){toast(sourceOf(k));return;}
+  closeSheet();panTo(e,()=>{if(CROPS[k]){toast(`${ITEMS[k].n}: boş tarlaya dokun ve ek.`);}else openProd(e);});}
 function sourceOf(k){if(CROPS[k])return `${ITEMS[k].n} tarlada yetişir.`;
   const r=RECIPES[k];if(!r)return `${ITEMS[k].n} tren, gemi ve uçak seferlerinden gelir.`;
   const where=Object.keys(DEF).filter(b=>DEF[b].recipes&&DEF[b].recipes.includes(k)).map(b=>DEF[b].name).join(' veya ');
@@ -1682,10 +1705,10 @@ function openOrders(){
   openSheet('Siparişler',()=>{
     $('sBody').innerHTML='<div class="orders">'+S.orders.map((o,i)=>{const ok=canTake(o.items);
       return `<div class="order"><div class="who"><img src="${IMG_SRC[o.tea?(IMG_SRC.f_12?'f_12':o.who):o.who]}" alt="">${o.bayram?'🎉 '+o.bayram+' · '+o.folk:o.tea?'Çay siparişi · '+o.folk:PEOPLE[o.who]}</div>
-      <div class="items">${Object.entries(o.items).map(([k,q])=>`<span class="it">${ic(k)}<em class="${have(k)<q?'miss':''}">${have(k)}/${q}</em></span>`).join('')}</div>
+      <div class="items">${Object.entries(o.items).map(([k,q])=>`<span class="it" ${have(k)<q?`data-need="${k}" role="button"`:''}>${ic(k)}<em class="${have(k)<q?'miss':''}">${have(k)}/${q}</em></span>`).join('')}</div>
       <div class="foot"><span class="reward">${COIN} ${o.coins} ⭐ ${o.xp}</span><span><button class="btn ghost" data-skip="${i}">Değiştir</button>
       <button class="btn ${ok?'':'dis'}" data-ok="${i}" aria-disabled="${!ok}">Teslim et</button></span></div></div>`;}).join('')+'</div>';
-    bind('[data-ok]',b=>{const i=+b.dataset.ok,o=S.orders[i];if(!canTake(o.items)){const m=Object.entries(o.items).filter(([k,q])=>have(k)<q).map(([k,q])=>(q-have(k))+' '+ITEMS[k].n.toLocaleLowerCase('tr'));toast('Eksik: '+m.join(', ')+'. Eksiğe dokun, nerede yapıldığını gör.');return;}take(o.items);S.coins+=o.coins;S.st.orders++;sfx.coin();S.orders[i]=genOrder();heliGo();questTick();toast(PEOPLE[o.who]+': Teşekkürler! +'+o.coins+' altın · +'+o.xp+' ⭐');gainXP(o.xp);changed();});
+    bind('[data-ok]',b=>{const i=+b.dataset.ok,o=S.orders[i];if(!canTake(o.items)){const m=Object.entries(o.items).filter(([k,q])=>have(k)<q).map(([k,q])=>(q-have(k))+' '+ITEMS[k].n.toLocaleLowerCase('tr'));toast('Eksik: '+m.join(', ')+'. Kırmızı ürüne dokun, seni üretildiği yere götüreyim.');return;}take(o.items);S.coins+=o.coins;S.st.orders++;sfx.coin();S.orders[i]=genOrder();heliGo();questTick();toast(PEOPLE[o.who]+': Teşekkürler! +'+o.coins+' altın · +'+o.xp+' ⭐');gainXP(o.xp);changed();});
     bind('[data-skip]',b=>{S.orders[+b.dataset.skip]=genOrder();changed();});
     while(S.orders.length<orderSlots())S.orders.push(genOrder());
   });
@@ -2046,7 +2069,7 @@ $('demoExit').onclick=exitDemo;
 /* ================= ELMAS VE MAĞAZA (test modu) ================= */
 // Mağaza uygulamasında (iOS/Android) sahte ödeme ve sahte reklam GÖSTERİLMEZ (mağaza kuralı). Web sürümünde test modu açık kalır.
 const IS_NATIVE=!!(window.Capacitor&&(window.Capacitor.isNativePlatform?window.Capacitor.isNativePlatform():window.Capacitor.platform&&window.Capacitor.platform!=='web'));
-const TEST_STORE=!IS_NATIVE;
+Object.defineProperty(window,'TEST_STORE',{get:()=>!IS_NATIVE||!!(typeof S!=='undefined'&&S&&S.dev)});
 const GEM=`<i class="ic ic-i_gem" role="img" aria-label="elmas"></i>`;
 const skipCost=ms=>Math.max(1,Math.ceil(ms/120000));
 function spendGems(n){if((S.gems||0)<n){toast('Elmasın yetmiyor');openStore();return false;}S.gems-=n;changed();return true;}
@@ -2071,8 +2094,11 @@ function buyPack(id){const p=id==='starter'?STARTER:GEMPACKS.find(x=>x.id===id);
   sfx.fanfare();toast(`Test satın alma: +${p.g} elmas`);changed();sheetCtx();}
 /* ---------- ÖDÜLLÜ REKLAM (AdMob) ---------- */
 const ADS={ready:false,ios:'ca-app-pub-6236520075152909/2429015849',android:'ca-app-pub-6236520075152909/2469166410',busy:false}; // Köyden Şehre ödüllü reklam birimleri
-function admobPlugin(){const C=window.Capacitor;if(!C)return null;return (C.Plugins&&C.Plugins.AdMob)||(C.registerPlugin?C.registerPlugin('AdMob'):null);}
-async function adsInit(){if(!IS_NATIVE||ADS.ready||ADS.initing)return;const P=admobPlugin();if(!P){ADS.err='AdMob eklentisi bulunamadı';return;}
+function admobPlugin(){const C=window.Capacitor;if(!C)return null;if(C.Plugins&&C.Plugins.AdMob)return C.Plugins.AdMob;if(C.registerPlugin)try{const p=C.registerPlugin('AdMob');if(p)return p;}catch(e){}
+  if(C.nativePromise){const call=(m,o)=>C.nativePromise('AdMob',m,o||{});return {initialize:o=>call('initialize',o),prepareRewardVideoAd:o=>call('prepareRewardVideoAd',o),showRewardVideoAd:()=>call('showRewardVideoAd'),
+    addListener:async(ev,cb)=>{if(C.addListener)return C.addListener('AdMob',ev,cb);return {remove(){}};}};}return null;}
+const nativePlugins=()=>{const C=window.Capacitor;try{return (C.PluginHeaders||[]).map(p=>p.name).join(', ');}catch(e){return '';}};
+async function adsInit(){if(!IS_NATIVE||ADS.ready||ADS.initing)return;const P=admobPlugin();if(!P){ADS.err='AdMob eklentisi bulunamadı ('+(nativePlugins()||'eklenti listesi boş')+')';return;}
   ADS.initing=true;try{await P.initialize({requestTrackingAuthorization:true,initializeForTesting:false});ADS.p=P;ADS.ready=true;ADS.err='';}catch(e){ADS.err=String(e&&e.message||e);console.warn('reklam başlatılamadı',e);}ADS.initing=false;}
 // Reklam düğmeleri cihazda her zaman görünür; hazır değilse basınca yeniden denenir
 const adsAvailable=()=>true;
