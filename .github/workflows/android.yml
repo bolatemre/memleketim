@@ -18,7 +18,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
+      # Android SDK ubuntu sunucularında zaten kurulu; ayrı kurulum adımı gerekmiyor
       - name: Google Play için AAB ve telefona kurulacak APK üret
         env:
           KEY_PASS: ${{ secrets.KEY_PASS }}
