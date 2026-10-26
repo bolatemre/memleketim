@@ -798,13 +798,14 @@ const sfx={
 };
 // Gizli kodlar: sadece kodu bilen kullanabilir, cihaz başına bir kez
 async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s.trim().toUpperCase()));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
-const CODES={'cb0eb6d71ed05e4ccd47e79a55891e6280ef9625aa3e7770fd9bf9daa35a8d72':{lvl:22,story:58,coins:30000,gems:150,items:{usta:10,nails:40,plank:30,steel:20,gear:10},msg:'Hoş geldin geri! 22. seviye: hikâye ve harita da açıldı.'}};
+const CODES={'c4c06180fec9d5405eff2379be7edbdfae9e16700dda5469b4085b28fb7cfd77':{gems:200,repeat:true,msg:'+200 elmas!'},'cb0eb6d71ed05e4ccd47e79a55891e6280ef9625aa3e7770fd9bf9daa35a8d72':{lvl:22,story:58,coins:30000,gems:150,items:{usta:10,nails:40,plank:30,steel:20,gear:10},msg:'Hoş geldin geri! 22. seviye: hikâye ve harita da açıldı.'}};
 function syncStoryTo(idx){// hikâyeyi verilen göreve kadar ilerlet: bölgeleri aç, etkileri uygula
   for(let i=S.quest.i;i<Math.min(idx,STORY.length);i++){const q=STORY[i];
     for(const g of q.goals||[])if(g.t==='block'&&!S.blocks.includes(g.b)){S.blocks.push(g.b);try{seedBlock(g.b,false);}catch(e){}}
     if(q.fx&&EFFECTS[q.fx])try{EFFECTS[q.fx]();}catch(e){}}
   if(S.quest.i<idx){S.quest.i=idx;S.quest.gen=null;startQuest(false);}}
 async function redeemCode(c){if(!c)return;S.codes=S.codes||[];const h=await sha(c),g=CODES[h];if(!g){toast('Kod geçersiz');return;}
+  if(g.repeat){S.gems=(S.gems||0)+g.gems;S.dev=true;sfx.fanfare();toast(g.msg);closeSheet();changed();return;}
   if(S.codes.includes(h)){if(g.story&&S.quest.i<g.story){syncStoryTo(g.story);S.dev=true;toast('Hikâye ve harita 22. seviyeye göre açıldı.');closeSheet();changed();questUI();return;}toast('Bu kod bu cihazda zaten kullanıldı');return;}
   S.codes.push(h);S.dev=true;if(g.story)syncStoryTo(g.story);if(g.lvl&&S.lvl<g.lvl){S.lvl=g.lvl;S.xp=0;}S.coins+=g.coins||0;S.gems=(S.gems||0)+(g.gems||0);for(const[k,q]of Object.entries(g.items||{}))addItem(k,q);
   sfx.fanfare();toast(g.msg);closeSheet();changed();questUI();}
@@ -1301,7 +1302,7 @@ function drawPlane(r,t){const im=IM.v_plane;if(!im||S.plane.state==='locked')ret
   if(!show)return;const w=78*(1+k*.6),h=im.height*w/im.width;
   ctx.save();ctx.globalAlpha=1-Math.max(0,k-.75)*4;ctx.translate(bx+k*700,by-k*520);if(planeAnim&&planeAnim.leave){ctx.scale(-1,1);ctx.rotate(-.18);}else ctx.rotate(-k*.15);ctx.drawImage(im,-w/2,-h,w,h);ctx.restore();}
 let skyPlane=null;
-function drawSky(t){if(S.era<3||!IM.v_plane)return;if(!skyPlane||t-skyPlane.t0>14000){if(!skyPlane||Math.random()<.004){const b=bounds();skyPlane={t0:t,x0:b.x0-300,y0:b.y0+(b.y1-b.y0)*(.2+Math.random()*.5)};}else return;}
+function drawSky(t){if(!IM.v_plane||!S.ents.some(e=>isAirport(e)))return;if(!skyPlane||t-skyPlane.t0>14000){if(!skyPlane||Math.random()<.004){const b=bounds();skyPlane={t0:t,x0:b.x0-300,y0:b.y0+(b.y1-b.y0)*(.2+Math.random()*.5)};}else return;}
   const d=(t-skyPlane.t0)/14000,b=bounds(),im=IM.v_plane,w=90,h=im.height*w/im.width;ctx.save();ctx.globalAlpha=.95;ctx.translate(skyPlane.x0+(b.x1-b.x0+600)*d,skyPlane.y0-d*260);ctx.scale(-1,1);ctx.rotate(-.12);ctx.drawImage(im,-w/2,-h,w,h);ctx.restore();} // burnu gittiği yöne baksın
 let shipAnim=null;
 function shipPos(r,t){const base={x:r.x+r.w*.2,y:r.y+r.h*.86};if(S.ship.state==='locked')return null;
@@ -1817,8 +1818,13 @@ $('pYes').onclick=()=>{if(!place)return;const d=DEF[place.type];
   if(occupied(place.gx,place.gy,d.size,place.move)){toast('Burası dolu, başka yer seç');return;}
   if(place.move){place.move.gx=place.gx;place.move.gy=place.gy;place.move.bounce=now();endPlace();changed();return;}
   const p=priceOf(place.type);if(S.coins<p){toast('Yeterli altın yok');return;}
-  if(d.kind==='road'){S.coins-=p;S.roads.push([place.gx,place.gy]);rebuildRoads();const keep=place.type;const nx=[place.gx+1,place.gy];endPlace();changed();
-    if(!occupied(nx[0],nx[1],1)&&S.coins>=10){place={type:keep,gx:nx[0],gy:nx[1]};barOn();}return;}
+  if(d.kind==='road'){S.coins-=p;S.roads.push([place.gx,place.gy]);rebuildRoads();sfx.thud();const keep=place.type,cur=[place.gx,place.gy],prev=place.prevCell;
+    let dir=prev&&Math.abs(cur[0]-prev[0])+Math.abs(cur[1]-prev[1])===1?[cur[0]-prev[0],cur[1]-prev[1]]:(place.dir||[1,0]);
+    let nx=null;for(const c of[dir,[dir[1],dir[0]],[-dir[1],-dir[0]]]){const x=cur[0]+c[0],y=cur[1]+c[1];if(!occupied(x,y,1)){nx=[x,y];dir=c;break;}}
+    endPlace();changed();
+    // yol modunda kal: sıradaki kare otomatik önerilir, ✗ ile çıkılır
+    if(S.coins>=priceOf(keep)){place={type:keep,gx:nx?nx[0]:cur[0],gy:nx?nx[1]:cur[1],prevCell:cur,dir};barOn();if(!nx)toast('Yol burada bitiyor: devam için haritaya dokun, bitirmek için ✗');}
+    else toast('Altın bitti, yol yapımı durdu');return;}
   S.coins-=p;const e={id:S.nextId++,type:place.type,gx:place.gx,gy:place.gy};if(d.kind==='house')e.last=now();
   S.ents.push(e);e.bounce=now();sfx.thud();const c=centerOf(e);floatText(c.x,c.y-60,'-'+p,'i_coin');gainXP(d.kind==='field'?1:5);endPlace();
   if(e.type==='harbor'&&S.ship.state==='locked')S.ship={state:'here',crates:genCrates(4),back:0};
@@ -2189,12 +2195,14 @@ const SHAPES=[null,
  (x,y)=>(x>=2&&x<=5)||(y>=2&&y<=5)]; // artı
 function m3Level(L){const r=m3rng(L*7919+13);const colors=L<10?4:L<35?5:6;
   let moves=Math.max(15,30-Math.floor(L/22)+Math.floor(r()*5));const boss=L%10===0;if(boss)moves+=3;
-  const feats=['collect'];if(L>=12)feats.push('stone');if(L>=25)feats.push('ice');if(L>=45)feats.push('drop');
-  const main=feats[L%feats.length];const second=boss&&feats.length>1?feats[(L+1)%feats.length]:null;const has=f=>main===f||second===f;
+  const feats=['collect'];if(L>=6)feats.push('ice');if(L>=12)feats.push('stone');if(L>=18)feats.push('ice');if(L>=45)feats.push('drop');
+  const main=feats[L%feats.length];let second=boss&&feats.length>1?feats[(L+1)%feats.length]:null;
+  if(!second&&L>=10&&main!=='ice'&&r()<.4)second='ice'; /* buz kırma artık çok daha sık */
+  const has=f=>main===f||second===f;
   const goals={};const nG=main==='collect'?(L<6?1:L<30?2:3):(L>40&&r()<.5?1:0);
   const types=[...Array(colors).keys()].sort(()=>r()-.5).slice(0,nG);for(const t of types)goals[t]=Math.min(50,9+Math.floor(L*.13)+Math.floor(r()*6));
   const stones=has('stone')?Math.min(14,2+Math.floor(L/28)+Math.floor(r()*3)):0;if(stones)goals.stone=stones;
-  const ice=has('ice')?Math.min(40,8+Math.floor(L/9)+Math.floor(r()*6)):0;const ice2=L>=90&&has('ice')?Math.floor(ice*.4):0;if(ice)goals.ice=ice+ice2;
+  const ice=has('ice')?Math.min(40,(main==='ice'?8:5)+Math.floor(L/9)+Math.floor(r()*6)):0;const ice2=L>=90&&has('ice')?Math.floor(ice*.4):0;if(ice)goals.ice=ice+ice2;
   const drops=has('drop')?Math.min(4,1+Math.floor(L/90)):0;if(drops)goals.drop=drops;
   const shape=L>=60&&r()<.55?1+Math.floor(r()*(SHAPES.length-1)):0;
   if(!Object.keys(goals).length)goals[0]=12;
