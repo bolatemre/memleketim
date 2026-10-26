@@ -1747,10 +1747,15 @@ function openExpand(key){
   if(!canUnlock(key)){toast('Önce bu bölgeye komşu bir alanı aç');return;}
   openSheet('Yeni bölge',()=>{const c=blockCost(),lock=S.lvl<c.lvl,ok=!lock&&S.coins>=c.coins&&canTake(c.items);
     $('sBody').innerHTML=`<p class="sub">Bulutların altındaki ${BS}×${BS} alan adana katılır. İçinden çıkan kütük ve kayaları aletlerle temizlersin.</p>${blockHint(key)}
-    <div class="row"><div class="ico"><img class="ic" src="${IMG_SRC.x_sign}" alt=""></div><div class="mid"><div class="d">${lock?'Seviye '+c.lvl+' gerekir':needHTML(c.items)+' '+COIN+' '+c.coins}</div></div>
-    <button class="btn alt" id="unl" ${ok?'':'disabled'}>Aç</button></div>
+    <div class="row"><div class="ico"><img class="ic" src="${IMG_SRC.x_sign}" alt=""></div><div class="mid"><div class="d">${lock?'Seviye '+c.lvl+' gerekir':needHTML(c.items)+` <span class="need ${S.coins<c.coins?'miss':''}">${COIN} ${S.coins.toLocaleString('tr-TR')}/${c.coins.toLocaleString('tr-TR')}</span>`}</div></div>
+    <button class="btn alt" id="unl" ${lock?'disabled':''}>Aç</button></div>
+    ${!lock&&canTake(c.items)&&S.coins<c.coins?`<div class="row"><div class="mid"><div class="t">Altının yetmiyor</div><div class="d">Eksik ${(c.coins-S.coins).toLocaleString('tr-TR')} altını elmasla tamamla</div></div><button class="btn" id="unlGem">${Math.ceil((c.coins-S.coins)/100)} ${GEM}</button></div>`:''}
     <p class="sub">Kürek ve çivi Demirci’de yapılır; tren de ödül olarak getirir.</p>`;
-    $('unl').onclick=()=>{const c2=blockCost();if(S.lvl<c2.lvl||S.coins<c2.coins||!canTake(c2.items))return;S.coins-=c2.coins;take(c2.items);S.blocks.push(key);seedBlock(key,false);addItem('map',1);gainXP(15);closeSheet();toast('Yeni bölge açıldı! +1 harita parçası');questTick();changed();};});
+    if($('unlGem'))$('unlGem').onclick=()=>{const c2=blockCost(),miss=c2.coins-S.coins;if(miss<=0)return;if(!spendGems(Math.ceil(miss/100)))return;S.coins+=miss;$('unl').click();};
+    $('unl').onclick=()=>{const c2=blockCost();
+      if(S.lvl<c2.lvl){toast('Seviye '+c2.lvl+' gerekir');return;}
+      if(!canTake(c2.items)){const m=Object.entries(c2.items).filter(([k,q])=>have(k)<q).map(([k,q])=>(q-have(k))+' '+ITEMS[k].n.toLocaleLowerCase('tr-TR'));toast('Eksik: '+m.join(', ')+'. Kırmızı ürüne dokun, seni üretildiği yere götüreyim.');return;}
+      if(S.coins<c2.coins){toast(`${(c2.coins-S.coins).toLocaleString('tr-TR')} altın eksik: siparişleri teslim et ya da elmasla tamamla.`);return;}S.coins-=c2.coins;take(c2.items);S.blocks.push(key);seedBlock(key,false);addItem('map',1);gainXP(15);closeSheet();toast('Yeni bölge açıldı! +1 harita parçası');questTick();changed();};});
 }
 let shopTab=-1;
 const SHOPF=['field','road','cottage','bakery','cayocagi','cami1','cowpen','feedmill','market','coop','dairy','balikci','halkoyun','kebapci','mine','smith','sheepfold','school','post','weaving','hospital','stadium','jamfactory','orchard','beehive','solar','helipad'];
