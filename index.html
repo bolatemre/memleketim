@@ -2154,7 +2154,7 @@ async function rcInit(){if(!IS_NATIVE||RC.ready||RC.initing)return;const P=rcPlu
   try{
     // Public API Key: RevenueCat panelinden alınır, platforma göre farklıdır.
     const plat=window.Capacitor.getPlatform();
-    const apiKey=plat==='ios'?'appl_hucRofDBxUqIZsVRaarYGlMLLZH':'goog_XXXXXXXXXXXXXXXXXXXXXXXXXXX';
+    const apiKey=plat==='ios'?'appl_hucRofDBxUqIZsVRaarYGlMLLZH':'goog_emjJVuNkVldiRAWNpOZnuSWrNmR';
     await P.configure({apiKey});
     RC.p=P;RC.ready=true;RC.err='';
   }catch(e){RC.err=String(e&&e.message||e);console.warn('RevenueCat başlatılamadı',e);}
