@@ -18,6 +18,9 @@ rm -rf android
 npx cap add android
 npx cap copy android
 npx @capacitor/assets generate --android --iconBackgroundColor "#f0a050" --splashBackgroundColor "#f0a050"
+# Google Play otomatik koruma en az Android 7.0 (SDK 24) istiyor; Capacitor 7 varsayılanı 23
+sed -i -E "s/minSdkVersion = [0-9]+/minSdkVersion = 24/" android/variables.gradle
+grep -n "minSdkVersion" android/variables.gradle
 G=android/app/build.gradle
 sed -i -E "s/versionCode [0-9]+/versionCode ${BUILD_NUMBER}/; s/versionName \"[^\"]*\"/versionName \"1.0.${BUILD_NUMBER}\"/" "$G"
 perl -0pi -e 's/<activity(\s)/<activity android:screenOrientation="portrait"$1/' android/app/src/main/AndroidManifest.xml
