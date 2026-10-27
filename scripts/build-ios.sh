@@ -8,6 +8,7 @@ ASC_ISSUER_ID=ab9b64ae-e251-4e02-b25f-e51f11fccc2d
 BUNDLE_ID=com.bolatemre.memleketim
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 TMP="${RUNNER_TEMP:-/tmp}"
+REPO="$(pwd)"
 
 echo "::group::Xcode 26 seç (App Store iOS 26 SDK istiyor)"
 XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
@@ -67,6 +68,11 @@ node scripts/decrypt-key.js > "$KEYFILE"
 KC="$TMP/build.keychain-db";KCPASS="kc$RANDOM$RANDOM"
 cleanup(){ rm -rf "$TMP/keys" "$TMP/dist-key.pem" "$TMP/dist.p12"; security delete-keychain "$KC" 2>/dev/null || true; }
 trap cleanup EXIT
+echo "::endgroup::"
+
+echo "::group::App Store sayfası (metinler, ekran görüntüleri, kategori, yaş derecesi)"
+# store-texts.json ve store/ios-6.9-1290x2796 içindeki görseller App Store Connect'e yazılır; hata derlemeyi durdurmaz
+ASC_KEY_FILE="$KEYFILE" ASC_KEY_ID="$ASC_KEY_ID" ASC_ISSUER_ID="$ASC_ISSUER_ID" BUNDLE_ID="$BUNDLE_ID" node "$REPO/scripts/asc-listing.js" || true
 echo "::endgroup::"
 
 echo "::group::İmzalama (tek, kalıcı dağıtım sertifikası)"
