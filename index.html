@@ -798,25 +798,11 @@ const sfx={
   fanfare:()=>{if(!SND.ctx)return;const t=SND.ctx.currentTime;[0,2,4,7].forEach((n,i)=>pluck(HICAZ[n]*2,t+i*.12,.25,SND.fx));}
 };
 // Gizli kodlar: sadece kodu bilen kullanabilir, cihaz başına bir kez
-async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s.trim().toUpperCase()));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
-const CODES={'c4c06180fec9d5405eff2379be7edbdfae9e16700dda5469b4085b28fb7cfd77':{gems:200,repeat:true,msg:'+200 elmas!'},'cb0eb6d71ed05e4ccd47e79a55891e6280ef9625aa3e7770fd9bf9daa35a8d72':{lvl:22,story:58,coins:30000,gems:150,items:{usta:10,nails:40,plank:30,steel:20,gear:10},msg:'Hoş geldin geri! 22. seviye: hikâye ve harita da açıldı.'}};
-function syncStoryTo(idx){// hikâyeyi verilen göreve kadar ilerlet: bölgeleri aç, etkileri uygula
-  for(let i=S.quest.i;i<Math.min(idx,STORY.length);i++){const q=STORY[i];
-    for(const g of q.goals||[])if(g.t==='block'&&!S.blocks.includes(g.b)){S.blocks.push(g.b);try{seedBlock(g.b,false);}catch(e){}}
-    if(q.fx&&EFFECTS[q.fx])try{EFFECTS[q.fx]();}catch(e){}}
-  if(S.quest.i<idx){S.quest.i=idx;S.quest.gen=null;startQuest(false);}}
-async function redeemCode(c){if(!c)return;S.codes=S.codes||[];const h=await sha(c),g=CODES[h];if(!g){toast('Kod geçersiz');return;}
-  if(g.repeat){S.gems=(S.gems||0)+g.gems;S.dev=true;sfx.fanfare();toast(g.msg);closeSheet();changed();return;}
-  if(S.codes.includes(h)){if(g.story&&S.quest.i<g.story){syncStoryTo(g.story);S.dev=true;toast('Hikâye ve harita 22. seviyeye göre açıldı.');closeSheet();changed();questUI();return;}toast('Bu kod bu cihazda zaten kullanıldı');return;}
-  S.codes.push(h);S.dev=true;if(g.story)syncStoryTo(g.story);if(g.lvl&&S.lvl<g.lvl){S.lvl=g.lvl;S.xp=0;}S.coins+=g.coins||0;S.gems=(S.gems||0)+(g.gems||0);for(const[k,q]of Object.entries(g.items||{}))addItem(k,q);
-  sfx.fanfare();toast(g.msg);closeSheet();changed();questUI();}
+// Gizli kodlar mağaza sürümünden kaldırıldı (Apple kural 2.3.1)
 function setAudio(k,v){SND.on[k]=v;saveAudio();if(SND.ctx){if(k==='music')SND.mus.gain.value=v?.55:0;else SND.fx.gain.value=v?1:0;}soundPill();}
 function soundPill(){const el=$('sndPill');if(el)el.textContent=SND.on.music||SND.on.sfx?'🔊':'🔇';}
 function openSound(){openSheet('Ses',()=>{$('sBody').innerHTML=`<div class="row"><div class="mid"><div class="t">Müzik</div><div class="d">Hicaz makamında bağlama ezgisi</div></div><button class="btn ${SND.on.music?'':'alt'}" id="tMus">${SND.on.music?'Açık':'Kapalı'}</button></div>
   <div class="row"><div class="mid"><div class="t">Efektler</div><div class="d">Hasat, altın, çay kaşığı, inek, horoz…</div></div><button class="btn ${SND.on.sfx?'':'alt'}" id="tSfx">${SND.on.sfx?'Açık':'Kapalı'}</button></div>`;
-  $('sBody').insertAdjacentHTML('beforeend',`${IS_NATIVE?`<div class="stat"><span>Reklam durumu</span><span>${ADS.ready?'✅ hazır':'⏳ '+(ADS.err||'hazırlanıyor')}</span></div>`:''}
-    <div class="sec">Kod</div><div class="row"><input id="codeIn" placeholder="Kodun varsa yaz" autocomplete="off" style="flex:1;min-width:0;border-radius:12px;border:2px solid var(--panel-edge);padding:10px;font:inherit;background:var(--chip);color:var(--ink)"><button class="btn" id="codeOk">Kullan</button></div>`);
-  $('codeOk').onclick=()=>redeemCode($('codeIn').value);
   $('tMus').onclick=()=>{audioInit();setAudio('music',!SND.on.music);sheetCtx();};$('tSfx').onclick=()=>{audioInit();setAudio('sfx',!SND.on.sfx);sheetCtx();};});}
 
 /* ================= GÜNLÜK ÖDÜL ================= */
