@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""src/ ve assets/ klasörlerinden tek dosyalık oyunu (index.html) üretir.
+"""src/ ve gorseller/ klasörlerinden tek dosyalık oyunu (index.html) üretir.
 Kullanım: python3 scripts/derle.py [çıktı.html]"""
 import sys, os, json, base64, glob
 out = sys.argv[1] if len(sys.argv) > 1 else 'index.html'
 imgs = {}
-for f in sorted(glob.glob('assets/*')):
+for f in sorted(glob.glob('gorseller/*')):
     k, ext = os.path.splitext(os.path.basename(f)); ext = ext[1:]
     mime = {'png': 'image/png', 'jpg': 'image/jpeg', 'webp': 'image/webp'}.get(ext)
     if mime: imgs[k] = f'data:{mime};base64,' + base64.b64encode(open(f, 'rb').read()).decode()

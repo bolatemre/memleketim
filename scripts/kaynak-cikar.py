@@ -3,7 +3,7 @@
    src/head.html  (başlık, stiller, gömülü fontlar)
    src/body.html  (arayüz iskeleti)
    src/NN-bolum.js (oyun kodu, bölüm bölüm)
-   assets/*.webp|png (oyunun bütün görselleri)
+   gorseller/*.webp|png (oyunun bütün görselleri)
 Kullanım: python3 scripts/kaynak-cikar.py index.html"""
 import sys, os, re, json, base64, unicodedata
 src = sys.argv[1] if len(sys.argv) > 1 else 'index.html'
@@ -15,11 +15,11 @@ head, body = pre.split('</head>', 1); head += '</head>'
 m = re.search(r'const IMG_SRC\s*=\s*', js); i = m.end()
 imgs, end = json.JSONDecoder().raw_decode(js[i:])
 js = js[:i] + '__IMAGES__' + js[i + end:]
-os.makedirs('assets', exist_ok=True)
+os.makedirs('gorseller', exist_ok=True)
 for k, v in imgs.items():
     mime, b64 = v.split(',', 1)
     ext = 'png' if 'png' in mime else 'jpg' if 'jpeg' in mime else 'webp'
-    open(f'assets/{k}.{ext}', 'wb').write(base64.b64decode(b64))
+    open(f'gorseller/{k}.{ext}', 'wb').write(base64.b64decode(b64))
 # kod: "/* ===== BÖLÜM ===== */" işaretlerinden bölümlere ayır
 os.makedirs('src', exist_ok=True)
 for f in os.listdir('src'):
