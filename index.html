@@ -317,6 +317,8 @@ button,.btn,.btn-round,[role=button],[data-l],[data-buy]{touch-action:manipulati
 .lvlstar{font-size:64px;position:relative;line-height:1}.lvlstar span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:#fff;text-shadow:0 2px 2px rgba(0,0,0,.4);padding-top:6px}
 .lvlt{font-size:30px;font-weight:900;color:#7a4a10;margin-top:4px}.lvld{font-size:17px;font-weight:700;margin-top:6px}.lvlu{font-size:14px;margin-top:8px;max-width:260px;color:#6b4a20}
 @keyframes lvlPop{0%{transform:scale(.3)}100%{transform:scale(1)}}@keyframes lvlIn{from{opacity:0}to{opacity:1}}
+.gempop{animation:gemPop .6s ease-out}@keyframes gemPop{0%{transform:scale(1)}35%{transform:scale(1.25);filter:drop-shadow(0 0 10px #6fd3ff)}100%{transform:scale(1)}}
+.gemfly{position:fixed;z-index:70;transform:translateX(-100%);font-weight:900;font-size:22px;color:#fff;text-shadow:0 2px 3px rgba(0,0,0,.6);pointer-events:none;animation:gemFly 1.6s ease-out forwards}@keyframes gemFly{0%{opacity:0;margin-left:20px}15%{opacity:1;margin-left:0}80%{opacity:1}100%{opacity:0;margin-top:-20px}}
 .lcom{min-height:64px;background:rgba(0,0,0,.35);border-radius:12px;padding:6px 10px;margin-top:6px;font-size:14px}.lcom p{margin:2px 0}
 .lig .m3end .card{color:var(--ink)}
 .pen{position:fixed;inset:0;z-index:28;display:none;flex-direction:column;align-items:center;background:#16213e;color:#fff;padding:calc(env(safe-area-inset-top,0px) + 8px) 8px calc(env(safe-area-inset-bottom,0px) + 8px)}
@@ -1750,7 +1752,7 @@ function openService(e){const d=DEF[e.type];openSheet(d.name,()=>{$('sBody').inn
   <div class="stat"><span>Kasabanın mutluluğu</span><span>${joy()} (kiralar +%${joy()})</span></div><div class="stat"><span>Toplam enerji</span><span>${energy()} (üretim %${Math.round((1-speedMul())*100)} hızlı)</span></div>`+(d.show?`<div class="sec">Gösteri</div>
   <div class="row"><div class="mid"><div class="t">${showOn()?'Gösteri sürüyor! '+fmt(S.showUntil-now()):'Horon, zeybek, halay!'}</div><div class="d">${needHTML({ayran:3,simit:3})} · 2 dakika boyunca köylüler oynar, mutluluk +20</div></div>
   <button class="btn alt" id="show" ${showOn()||(!(curEvent()&&curEvent().freeShow)&&!canTake({ayran:3,simit:3}))?'disabled':''}>${curEvent()&&curEvent().freeShow?'Bedava başlat':'Başlat'}</button></div>`:'');
-  if(e.type==='school'){hmInit();$('sBody').insertAdjacentHTML('beforeend',`<div class="sec">Ders arası</div><div class="row"><div class="ico">✏️</div><div class="mid"><div class="t">Adam Asmaca</div><div class="d">Öğretmenin kelimesini bul: altın, yıldız; serilerde elmas ve Usta Belgesi. Bugün ${Math.max(0,3-S.hm.plays)} bedava hak.</div></div><button class="btn" id="hmGo">Oyna</button></div>`);$('hmGo').onclick=()=>{closeSheet();openHangman();};}
+  if(e.type==='school'){hmInit();$('sBody').insertAdjacentHTML('beforeend',`<div class="sec">Ders arası</div><div class="row"><div class="ico">✏️</div><div class="mid"><div class="t">Adam Asmaca</div><div class="d">Öğretmenin kelimesini bul: altın ve yıldız. Üst üste 5 bilene 3 elmas, her 10 bilişte Usta Belgesi. Bugün ${Math.max(0,3-S.hm.plays)} bedava hak.</div></div><button class="btn" id="hmGo">Oyna</button></div>`);$('hmGo').onclick=()=>{closeSheet();openHangman();};}
   if(d.penalty){$('sBody').insertAdjacentHTML('beforeend','<div style="text-align:center;margin-top:10px;display:flex;gap:8px;justify-content:center"><button class="btn" id="goLig">🏆 Köyler Ligi</button><button class="btn alt" id="goPen">⚽ Penaltı at</button></div>');$('goLig').onclick=()=>{closeSheet();openLig();};$('goPen').onclick=()=>{closeSheet();openPenalty();};}
   if(d.kahve){$('sBody').insertAdjacentHTML('beforeend','<div style="text-align:center;margin-top:10px"><button class="btn" id="goTavla">🎲 Tavla oyna</button></div>');$('goTavla').onclick=()=>{closeSheet();openTavla();};}
   if($('show'))$('show').onclick=()=>{const fr=curEvent()&&curEvent().freeShow;if(showOn()||(!fr&&!canTake({ayran:3,simit:3})))return;if(!fr)take({ayran:3,simit:3});S.showUntil=now()+120000;gainXP(15);closeSheet();toast('Davullar çalıyor, gösteri başladı!');changed();};},heads(e));}
@@ -1931,6 +1933,8 @@ function hud(){
   $('lvl').textContent=S.lvl;$('coins').textContent=S.coins;if($('gems'))$('gems').textContent=S.gems||0;$('xp').style.width=Math.min(100,S.xp/xpNeed(S.lvl)*100)+'%';
   $('pop').textContent=(popTotal()-workersUsed())+'/'+popTotal();
   if(typeof spaceHud==='function')try{spaceHud();}catch(e){}
+  {const g=S.gems||0;if(hud.lg!==undefined&&g>hud.lg){const n=g-hud.lg,pill=$('gems')&&$('gems').closest('div');if(pill){pill.classList.remove('gempop');void pill.offsetWidth;pill.classList.add('gempop');
+      const r=pill.getBoundingClientRect(),f=document.createElement('div');f.className='gemfly';f.textContent='+'+n+' 💎';f.style.left=(r.left-8)+'px';f.style.top=(r.top+r.height/2-14)+'px';document.body.appendChild(f);setTimeout(()=>f.remove(),1600);}}hud.lg=g;}
   {const c=cityNeeds(),show=c.demand>0||has('solar')||S.era>=2,p=$('powPill');if(p){p.style.display=show?'':'none';$('pow').textContent=`⚡ ${c.supply}/${c.demand}`;p.classList.toggle('low',!c.power);}}
   const n=S.orders.filter(o=>canTake(o.items)).length;const b=$('ordBadge');b.textContent=n;b.classList.toggle('on',n>0);
 }
@@ -2927,9 +2931,9 @@ async function cupMatchEnd(){const C=S.lig.cup,o=LM_.opp,[a,b]=LM_.sc;let pen=nu
   S.lig.next=now()+LIG_WAIT;cupAdvance();
   let extra='';const fin=C.fr===r;
   if(w===0){const coins=fin?400+S.lvl*20:150+S.lvl*8;S.coins+=coins;extra=`<p>${COIN} +${coins}</p>`;
-    if(fin){S.lig.cups=(S.lig.cups||0)+1;S.gems=(S.gems||0)+15;addItem('usta',2);extra+=`<p>🥇 <b>TÜRKİYE KUPASI BİZİM!</b> ${GEM} +15 · 2 Usta Belgesi</p>`;sfx.fanfare();}
+    if(fin){S.lig.cups=(S.lig.cups||0)+1;S.gems=(S.gems||0)+3;addItem('usta',2);extra+=`<p>🥇 <b>TÜRKİYE KUPASI BİZİM!</b> ${GEM} +3 · 2 Usta Belgesi</p>`;sfx.fanfare();}
     else extra+='<p>Finale çıktık!</p>';}
-  else{if(fin){S.gems=(S.gems||0)+5;extra=`<p>Finalde kaybettik. Teselli: ${GEM} +5</p>`;}else extra='<p>Kupaya yarı finalde veda ettik.</p>';}
+  else{if(fin){S.gems=(S.gems||0)+1;extra=`<p>Finalde kaybettik. Teselli: ${GEM} +1</p>`;}else extra='<p>Kupaya yarı finalde veda ettik.</p>';}
   gainXP(w===0?15:5);changed();
   lg$('ligEndTxt').innerHTML=`<h2>${w===0?(fin?'Kupa Bizim!':'Kazandık!'):'Elendik'}</h2><div class="vs"><span><img src="${lbadge(0)}" alt="">${a}</span><b>-</b><span>${b}<img src="${lbadge(o)}" alt=""></span></div>${pen?`<p>Seri penaltılar: <b>${pen}</b></p>`:''}${extra}`;
   ligStatsHTML();lg$('ligEnd').classList.add('on');}
@@ -3222,7 +3226,7 @@ function openHangman(){hmInit();
     $('sBody').innerHTML=h;
     const finish=()=>{const left=MAXM-G.bad.size;G.done=true;
       if(G.win){const school=S.ents.find(e=>e.type==='school'),L=school?lv(school):1;const coins=30+L*8+left*10+hmLen(G.w)*3;S.coins+=coins;gainXP(5+hmLen(G.w));S.hm.streak++;S.hm.wins++;
-        let extra='';if(S.hm.streak%5===0){S.gems=(S.gems||0)+1;extra+=` · ${GEM} +1 (5’li seri)`;}if(S.hm.wins%10===0){addItem('usta',1);extra+=' · 🎓 Usta Belgesi';}
+        let extra='';if(S.hm.streak%5===0){S.gems=(S.gems||0)+3;extra+=` · ${GEM} +3 (5’li seri!)`;}if(S.hm.wins%10===0){addItem('usta',1);extra+=' · 🎓 Usta Belgesi';}
         G.reward=`${COIN} +${coins} · ⭐ +${5+hmLen(G.w)}${extra}`;sfx.fanfare();}
       else{S.hm.streak=0;sfx.blip&&sfx.blip();}
       changed();};
