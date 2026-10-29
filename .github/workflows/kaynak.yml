@@ -1,0 +1,26 @@
+name: Kaynağı çıkar
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  cikar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: kaynak
+          fetch-depth: 0
+      - name: Son oyunu main dalından al
+        run: git checkout origin/main -- index.html
+      - name: Parçalara ayır ve sağlamasını yap
+        run: |
+          python3 scripts/kaynak-cikar.py index.html
+          python3 scripts/derle.py /tmp/kontrol.html
+          cmp /tmp/kontrol.html index.html && echo "Birebir aynı ✅"
+      - name: Kaynak dalına kaydet
+        run: |
+          git config user.name "Kaynak Botu"
+          git config user.email "bot@users.noreply.github.com"
+          git add src assets index.html
+          git commit -m "Oyunun kaynak kodu ve görselleri" || echo "Değişiklik yok"
+          git push origin kaynak
