@@ -1,0 +1,80 @@
+
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud">
+  <div class="lvl" aria-label="Seviye">
+    <div class="star"><img id="hudStar" alt=""><span id="lvl">1</span></div>
+    <div class="xpbar"><i id="xp"></i></div>
+  </div>
+  <div class="rightcol">
+    <div class="coins"><img class="coinimg" id="hudCoin" alt="" width="30" height="30"><span id="coins">0</span></div>
+    <div class="coins gemp" id="gemPill"><img class="coinimg" data-ic="i_gem" alt="" width="28" height="28"><span id="gems">0</span><b class="plus">+</b></div>
+    <div class="pop" id="popPill" title="Boştaki işçi / toplam nüfus"><img id="popImg" alt=""><span id="pop">0/0</span></div>
+    <div class="pop" id="o2Pill" role="button" style="display:none"><span>🫧</span></div>
+    <div class="pop" id="shPill" role="button" style="display:none"><span>🛡️</span></div>
+    <div class="pop" id="rocketPill" role="button" style="display:none"><span>🚀</span></div>
+    <div class="pop" id="powPill" role="button" title="Elektrik üretim / tüketim" style="display:none"><span id="pow">⚡ 0/0</span></div>
+    <div class="pop" id="clockPill" style="padding:3px 10px"><span id="clock">☀️ 12:00</span></div>
+    <div class="pop" id="sndPill" style="padding:3px 10px;font-size:17px">🔊</div>
+  </div>
+</div>
+
+<button class="quest" id="quest" aria-label="Hikâye görevi"><img id="qImg" alt=""><div><small id="qCh"></small><b id="qTitle"></b></div><span id="qProg"></span></button>
+
+<div class="demo" id="demo"><span class="lbl">Vitrin</span><button data-era="1">Köy</button><button data-era="2">Kasaba</button><button data-era="3">Şehir</button><button data-era="4">Tekno</button><button id="demoExit">Çık</button></div>
+
+<button class="travelbtn" id="travelBtn" style="display:none" aria-label="Dünyalar arası geçiş">🪐</button>
+<div class="spacefx" id="spaceFx"></div>
+<div class="dock" id="dock">
+  <button class="btn-round" id="bShop" aria-label="İnşa et"><img data-ic="u_build" alt=""><small>İnşa et</small></button>
+  <div class="right">
+    <button class="btn-round" id="bM3" aria-label="Bulmaca"><img data-ic="u_nazar" alt=""><small>Bulmaca</small></button>
+    <button class="btn-round" id="bOrders" aria-label="Siparişler"><img data-ic="u_orders" alt=""><span class="badge" id="ordBadge"></span><small>Siparişler</small></button>
+    <button class="btn-round" id="bBarn" aria-label="Ambar"><img data-ic="u_barn" alt=""><small>Ambar</small></button>
+  </div>
+</div>
+
+<div class="place-bar" id="placeBar">
+  <button class="btn-round" id="pNo" aria-label="Vazgeç">✖️</button>
+  <button class="btn-round" id="pYes" aria-label="Buraya kur">✅</button>
+</div>
+
+<div class="talk" id="talk"><img id="talkImg" alt=""><div class="bub"><div class="who" id="talkWho"></div><p id="talkText"></p><div class="acts" id="talkActs"></div></div></div>
+
+<div class="veil" id="veil"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true">
+  <header><h2 id="sTitle"></h2><div class="headbtns" id="sHead"></div><button class="x" id="sClose" aria-label="Kapat">✕</button></header>
+  <div id="sBody"></div>
+</section>
+<div class="toast" id="toast"></div>
+<div class="m3" id="m3" role="dialog" aria-modal="true">
+  <div class="top"><button class="btn alt" id="m3back">Bölümler</button><h2 id="m3title">Bulmaca</h2><button class="x" id="m3close" aria-label="Kapat">✕</button></div>
+  <div class="m3map" id="m3map"><p class="m3prog" id="m3prog"></p><div class="m3lv" id="m3lv"></div></div>
+  <div class="m3play" id="m3play"><div class="m3bar"><div class="mv"><small>Hamle</small><b id="m3moves">0</b></div><div class="m3goals" id="m3goals"></div></div>
+    <div class="m3score"><span>Puan <b id="m3score">0</b></span><div class="sb"><i id="m3sbar"></i><em id="m3s1">★</em><em id="m3s2">★</em><em id="m3s3" style="left:100%">★</em></div></div>
+    <div class="m3board" id="m3board"><canvas id="m3cv"></canvas></div>
+    <div class="m3boost"><button class="bst" id="m3ham">🔨<span>Çekiç</span><small>0 çivi</small></button><button class="bst" id="m3shf">🔀<span>Karıştır</span><small>bölümde 1</small></button></div></div>
+  <div class="m3end" id="m3end"><div class="card"><div id="m3endTxt"></div><div class="btns" id="m3btns"></div></div></div>
+</div>
+<div class="lig" id="lig" role="dialog" aria-modal="true">
+  <div class="top"><h2 id="ligTitle">🏆 Köyler Ligi</h2><button class="x" id="ligClose" aria-label="Kapat">✕</button></div>
+  <div class="lhome" id="ligHome"></div>
+  <div class="lmatch" id="ligMatch"><div class="lsbw"><div class="lsb" id="ligSB"></div><button class="lspd" id="ligSub">🔄 3</button><button class="lspd" id="ligSpd">⏩ 2x</button></div><div class="lprog"><i id="ligProg"></i></div><div class="lbox" id="ligBox"><canvas id="ligCv"></canvas></div><div class="lcom" id="ligCom"></div></div>
+  <div class="m3end" id="ligSubP"><div class="card"><div id="ligSubTxt"></div><div class="btns"><button class="btn" id="ligSubBack">Maça dön</button></div></div></div>
+  <div class="m3end" id="ligEnd"><div class="card"><div id="ligEndTxt"></div><div class="btns"><button class="btn" id="ligBack2">Tabloya dön</button></div></div></div>
+</div>
+<div class="pen" id="pen" role="dialog" aria-modal="true">
+  <div class="top"><button class="x" id="penClose" aria-label="Kapat">✕</button><h2 id="penTitle">⚽ Penaltı</h2><div class="dots" id="penDots"></div></div>
+  <p class="pmsg" id="penMsg"></p>
+  <div class="pbox"><canvas id="penCv"></canvas></div>
+  <div class="pboost"><span id="penGems"></span><button class="btn" id="penBig"></button></div>
+  <div class="m3end" id="penEnd"><div class="card"><div id="penEndTxt"></div><div class="btns"><button class="btn alt" id="penBack">Stadyumdan çık</button><button class="btn" id="penAgain">Tekrar</button></div></div></div>
+</div>
+<div class="namebox" id="dailyBox" role="dialog" aria-modal="true"><div class="card"><h2 id="dailyTitle">Hoş geldin!</h2>
+<p>Her gün gel, ödülün büyüsün. 7. gün büyük hediye!</p><div class="dailyg" id="dailyDays"></div><button class="btn" id="dailyOk">Ödülü al</button></div></div>
+<div class="namebox" id="nameBox" role="dialog" aria-modal="true"><div class="card"><h2 id="nameTitle">Köyüne bir isim ver</h2>
+<p>Bu köy senin. Büyüyüp kasaba, şehir olsa da bu adla anılacak.</p>
+<input id="townIn" maxlength="18" placeholder="Örn. Yeşilyurt" autocomplete="off" enterkeyhint="done">
+<div class="sug" id="townSug"></div><button class="btn" id="townOk">Köyümü kur</button></div></div>
+
