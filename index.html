@@ -2240,7 +2240,12 @@ function openStore(){openSheet('Mağaza',()=>{const today=dayKey(now()),ads=S.ad
   if($('adBtn'))$('adBtn').onclick=()=>showRewardedAd(()=>{const d=dayKey(now());S.ads=S.ads&&S.ads.day===d?S.ads:{day:d,n:0};S.ads.n++;S.gems=(S.gems||0)+3;sfx.coin();toast('+3 elmas');changed();openStore();});
   if($('rcRestore'))$('rcRestore').onclick=()=>rcRestore();
   // telefonda mağaza bağlantısı kurulamadıysa sebebini göster ve yeniden dene
-  if(IS_NATIVE&&!TEST_STORE&&!RC.ready&&RC.err){$('sBody').insertAdjacentHTML('afterbegin',`<div class="row" style="background:rgba(220,60,40,.12)"><div class="mid"><div class="t">Mağaza bağlantısı kurulamadı</div><div class="d" style="word-break:break-word">${RC.err.slice(0,160).replace(/</g,'&lt;')}</div></div><button class="btn" id="rcRetry">Tekrar dene</button></div>`);
+  if(IS_NATIVE&&!TEST_STORE&&!RC.ready&&!RC.err)RC.diag=true;
+  if(IS_NATIVE&&!TEST_STORE&&!RC.ready&&!RC.err&&!RC.initing)rcInit().then(()=>{if($('sheet').classList.contains('on'))openStore();});
+  if(IS_NATIVE&&!TEST_STORE&&!RC.ready){const C=window.Capacitor||{};const diag=`eklenti: ${C.Plugins&&C.Plugins.Purchases?'var':'YOK'} · platform: ${C.getPlatform?C.getPlatform():'?'} · durum: ${RC.initing?'başlatılıyor':'kapalı'}`;
+    $('sBody').insertAdjacentHTML('afterbegin',`<div class="row" style="background:rgba(220,60,40,.15)"><div class="mid"><div class="t">Mağaza bağlantısı kurulamadı</div><div class="d" style="word-break:break-word">${(RC.err||'hata mesajı yok').slice(0,160).replace(/</g,'&lt;')}<br><small>${diag}</small></div></div><button class="btn" id="rcRetry">Tekrar dene</button></div>`);
+    $('rcRetry').onclick=()=>{RC.err='';RC.initing=false;RC_PRODUCTS=null;rcInit().then(()=>openStore());};}
+  if(false){$('sBody').insertAdjacentHTML('afterbegin',`<div class="row" style="background:rgba(220,60,40,.12)"><div class="mid"><div class="t">Mağaza bağlantısı kurulamadı</div><div class="d" style="word-break:break-word">${RC.err.slice(0,160).replace(/</g,'&lt;')}</div></div><button class="btn" id="rcRetry">Tekrar dene</button></div>`);
     $('rcRetry').onclick=()=>{RC.err='';RC_PRODUCTS=null;rcInit().then(()=>openStore());};}
   rcShowPrices();});}
 /* ---------- SATIN ALMA (RevenueCat) ---------- */
@@ -2259,7 +2264,7 @@ async function rcInit(){if(!IS_NATIVE||RC.ready||RC.initing)return;const P=rcPlu
     // Public API Key: RevenueCat panelinden alınır, platforma göre farklıdır.
     const plat=window.Capacitor.getPlatform();
     const apiKey=plat==='ios'?'appl_hucRofDBxUqIZsVRaarYGlMLLZH':'goog_emjJVuNkVldiRAWNpOZnuSWrNmR';
-    await P.configure({apiKey});
+    RC.t0=Date.now();await Promise.race([P.configure({apiKey}),new Promise((_,rej)=>setTimeout(()=>rej(new Error('configure 10 sn içinde yanıt vermedi')),10000))]);
     RC.p=P;RC.ready=true;RC.err='';
   }catch(e){RC.err=String(e&&e.message||e);console.warn('RevenueCat başlatılamadı',e);}
   RC.initing=false;}
