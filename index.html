@@ -2239,6 +2239,9 @@ function openStore(){openSheet('Mağaza',()=>{const today=dayKey(now()),ads=S.ad
   bind('[data-buy]',b=>buyPack(b.dataset.buy));bind('[data-gold]',b=>{const p=GOLDPACKS[+b.dataset.gold];if(!spendGems(p.g))return;S.coins+=p.c;sfx.coin();toast('+'+p.c+' altın');changed();sheetCtx();});
   if($('adBtn'))$('adBtn').onclick=()=>showRewardedAd(()=>{const d=dayKey(now());S.ads=S.ads&&S.ads.day===d?S.ads:{day:d,n:0};S.ads.n++;S.gems=(S.gems||0)+3;sfx.coin();toast('+3 elmas');changed();openStore();});
   if($('rcRestore'))$('rcRestore').onclick=()=>rcRestore();
+  // telefonda mağaza bağlantısı kurulamadıysa sebebini göster ve yeniden dene
+  if(IS_NATIVE&&!TEST_STORE&&!RC.ready&&RC.err){$('sBody').insertAdjacentHTML('afterbegin',`<div class="row" style="background:rgba(220,60,40,.12)"><div class="mid"><div class="t">Mağaza bağlantısı kurulamadı</div><div class="d" style="word-break:break-word">${RC.err.slice(0,160).replace(/</g,'&lt;')}</div></div><button class="btn" id="rcRetry">Tekrar dene</button></div>`);
+    $('rcRetry').onclick=()=>{RC.err='';RC_PRODUCTS=null;rcInit().then(()=>openStore());};}
   rcShowPrices();});}
 /* ---------- SATIN ALMA (RevenueCat) ---------- */
 // Ürün kimlikleri App Store Connect / Google Play Console'daki gerçek IAP ürün ID'leriyle birebir aynı olmalı.
@@ -2269,7 +2272,7 @@ async function rcProducts(){if(RC_PRODUCTS)return RC_PRODUCTS;if(!RC.ready)await
 // Mağazadaki gerçek, yerel para birimindeki fiyatı düğmelere yaz
 async function rcShowPrices(){if(TEST_STORE||!IS_NATIVE)return;const ps=await rcProducts();if(!ps)return;
   for(const[id,pid]of Object.entries(RC_PRODUCT_ID)){const pr=ps.find(x=>x.identifier===pid),b=document.querySelector(`[data-buy="${id}"]`);if(pr&&b)b.textContent=pr.priceString;}}
-async function rcPurchase(productId){if(RC.busy)return null;if(!RC.ready)await rcInit();if(!RC.ready){toast('Mağazaya bağlanılamadı, biraz sonra tekrar dene');return null;}
+async function rcPurchase(productId){if(RC.busy)return null;if(!RC.ready)await rcInit();if(!RC.ready){toast('Mağazaya bağlanılamadı'+(RC.err?': '+RC.err.slice(0,90):', biraz sonra tekrar dene'));return null;}
   RC.busy=true;
   try{
     const offerings=RC.offerings||await rcGetOfferings();
