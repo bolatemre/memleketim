@@ -41,7 +41,12 @@ echo "::group::iOS projesi (Swift Package Manager)"
 rm -rf ios
 npx cap add ios --packagemanager SPM || echo "(pod install uyarısı yok sayıldı)"
 test -d ios/App/App.xcodeproj || { echo "Xcode projesi oluşmadı"; exit 1; }
-npx cap copy ios
+npx cap sync ios || npx cap copy ios
+# Eklentiler gerçekten uygulamaya girdi mi? (RevenueCat satın alma, AdMob reklam) — yoksa derlemeyi durdur
+echo "--- CapApp-SPM/Package.swift ---"; cat ios/App/CapApp-SPM/Package.swift || true
+echo "--- packageClassList ---"; grep -A6 packageClassList ios/App/App/capacitor.config.json || true
+grep -q "RevenuecatPurchasesCapacitor" ios/App/CapApp-SPM/Package.swift || { echo "::error::RevenueCat eklentisi Package.swift'e eklenmedi"; exit 1; }
+grep -q "PurchasesPlugin" ios/App/App/capacitor.config.json || { echo "::error::RevenueCat eklentisi packageClassList'te yok"; exit 1; }
 npx @capacitor/assets generate --ios --iconBackgroundColor "#f0a050" --splashBackgroundColor "#f0a050"
 echo "::endgroup::"
 
