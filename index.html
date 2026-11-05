@@ -2309,11 +2309,19 @@ function buyPack(id){const p=id==='starter'?STARTER:GEMPACKS.find(x=>x.id===id);
 /* ---------- ÖDÜLLÜ REKLAM (AdMob) ---------- */
 const ADS={ready:false,ios:'ca-app-pub-6236520075152909/2429015849',android:'ca-app-pub-6236520075152909/2469166410',busy:false}; // Köyden Şehre ödüllü reklam birimleri
 function admobPlugin(){const C=window.Capacitor;if(!C)return null;if(C.Plugins&&C.Plugins.AdMob)return C.Plugins.AdMob;if(C.registerPlugin)try{const p=C.registerPlugin('AdMob');if(p)return p;}catch(e){}
-  if(C.nativePromise){const call=(m,o)=>C.nativePromise('AdMob',m,o||{});return {initialize:o=>call('initialize',o),prepareRewardVideoAd:o=>call('prepareRewardVideoAd',o),showRewardVideoAd:()=>call('showRewardVideoAd'),
+  if(C.nativePromise){const call=(m,o)=>C.nativePromise('AdMob',m,o||{});return {initialize:o=>call('initialize',o),trackingAuthorizationStatus:()=>call('trackingAuthorizationStatus'),requestTrackingAuthorization:()=>call('requestTrackingAuthorization'),prepareRewardVideoAd:o=>call('prepareRewardVideoAd',o),showRewardVideoAd:()=>call('showRewardVideoAd'),
     addListener:async(ev,cb)=>{if(C.addListener)return C.addListener('AdMob',ev,cb);return {remove(){}};}};}return null;}
 const nativePlugins=()=>{const C=window.Capacitor;try{return (C.PluginHeaders||[]).map(p=>p.name).join(', ');}catch(e){return '';}};
+// Apple'ın takip izni (App Tracking Transparency). AdMob 7 bu izni kendisi sormuyor; biz soruyoruz.
+// iOS izni sadece uygulama ön plandayken gösterir, o yüzden ekran görünür olana kadar ve kısa bir süre bekliyoruz.
+let ATT_DONE=false;
+async function askTracking(P){if(ATT_DONE)return;ATT_DONE=true;try{if(window.Capacitor.getPlatform()!=='ios'||!P.trackingAuthorizationStatus)return;
+  const s=await P.trackingAuthorizationStatus();if(!s||s.status!=='notDetermined')return;
+  await new Promise(r=>{const go=()=>setTimeout(r,1200);if(document.visibilityState==='visible')go();else document.addEventListener('visibilitychange',function f(){if(document.visibilityState==='visible'){document.removeEventListener('visibilitychange',f);go();}});});
+  await P.requestTrackingAuthorization();}catch(e){console.warn('takip izni',e);}}
 async function adsInit(){if(!IS_NATIVE||ADS.ready||ADS.initing)return;const P=admobPlugin();if(!P){ADS.err='AdMob eklentisi bulunamadı ('+(nativePlugins()||'eklenti listesi boş')+')';return;}
-  ADS.initing=true;try{await P.initialize({requestTrackingAuthorization:true,initializeForTesting:false});ADS.p=P;ADS.ready=true;ADS.err='';
+  ADS.initing=true;try{await askTracking(P); // önce izin, sonra reklam altyapısı (izin verilmeden takip verisi toplanmasın)
+    await P.initialize({requestTrackingAuthorization:false,initializeForTesting:false});ADS.p=P;ADS.ready=true;ADS.err='';
     // AB/İngiltere kullanıcıları için Google'ın zorunlu reklam izni (GDPR) formu; AdMob'da "Gizlilik ve mesajlaşma" mesajı açıksa gösterilir
     try{const ci=await P.requestConsentInfo();if(ci&&ci.isConsentFormAvailable&&String(ci.status).toUpperCase()==='REQUIRED')await P.showConsentForm();}catch(e){}}catch(e){ADS.err=String(e&&e.message||e);console.warn('reklam başlatılamadı',e);}ADS.initing=false;}
 // Reklam düğmeleri cihazda her zaman görünür; hazır değilse basınca yeniden denenir
